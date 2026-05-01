@@ -1,60 +1,152 @@
-# Welcome to TealScript
+# TealScript
 
-TealScript is a high‑throughput signal processing engine: ingest sensor data, perform intelligent analysis, and emit control commands in real time. Optimized for embedded systems, autonomous systems, and distributed controllers. TealScript built-in language is a dynamically typed, embedded, extensible from the host code scripting language in the Data-flow Graph Paradigm intended to make the process of creation a complex control scenarios extremely easy.
+TealScript is a lightweight, distributed, and deterministic control logic engine—free from heavy message brokers (ROS/MQTT) and garbage collection overhead, with native C++ integration. 
 
-This is a "sense → compute → act" system that combines reliable telemetry ingestion, preprocessing, and configurable decision engines. Its architecture is built for parallel processing and high throughput: streaming pipelines, optimized filters, and an asynchronous parallel dispatcher for output commands ensure performance in demanding real-world environments. 
-
-The platform supports flexible input formats, allowing integration with virtually any data source, extended analysis (filtering, event detection, ML inference), and multiple output channels for driving actuators and networked controllers. TealScript integrates easily at source code level becoming a part of telemetry, remote monitoring and controlling workflows.
-
-The engine was designed for straightforward digital integration with real and virtual devices via a data-exchange protocol, clear rules for building control schemas, and simple extension mechanisms for the language from the host-side code. The result is a cohesive hardware-software system that runs according to schemas written in the embedded language - developing those schemas is a pleasure.
-
-The engine is implemented as an execution tree interpreter and does not rely on third-party tools for lexical analysis, parsing, or code generation, giving it a very small memory footprint. Because source code is compiled into an execution tree rather than machine code, the library is hardware-agnostic and portable to any system with a C++ compiler supporting standards 17 and higher and CMake build system.
-
-TealScript, while based on the data-flow graph paradigm, departs from strict functional purity being partialy statelful for convenience of solving many tasks. Each compute node (cell or element) is an instance of object that syntactically resembles a function definition but can retain state between execution cycles via instance's variables accessible through the "this" keyword.
-
-The system can run synchronously in single-threaded mode or asynchronously in multi-threaded mode, using as many processor cores as needed from available amount of CPU cores. Performance of code written in the embedded language is comparable to Python for single-threaded workloads; however, multi-threaded execution (the most common and natural mode of the system) can yield substantially higher overall throughput.
+It is an embedded scripting language designed to seamlessly wire physical and virtual devices into a unified control system. The language enforces strict, declarative rules for building schemas, making complex logic highly readable and maintainable. Combined with seamless C++ host extensibility, the result is a deterministic, cohesive hardware-software ecosystem driven entirely by data-flow graphs.
 
 
-## Why?
+## The "Secret Sauce": Stateful Data-Flow
 
-When designing any control logic, it is tempting to specify only what the final outcome should be, rather than provide detailed, step‑by‑step instructions for how to achieve it. The functional programming paradigm, in a sense, aligns with this declarative approach to problem solving. Although C++ has acquired some rudimentary functional features, the core language remains imperative and retains built‑in support for object‑oriented programming. That means C++ development typically requires architects and programmers to design the system in detail and to script the entire computational process down to the smallest steps.
-
-At the same time, it is desirable to have a dedicated tool or abstraction for each problem domain while continuing to use familiar development tools. In other words, we would like to broaden the range of programming approaches available without changing our toolchain. This goal has long been achieved by combining application source code with additional tooling in the form of libraries or inline source modules implemented using the language itself. Employing specialized components to solve domain‑specific problems is common practice.
-
-Here we present another tool that significantly simplifies building complex control schemes for many actuators based on processing numerous sensor signals via programming. Although there is a current trend toward coupling artificial neural networks directly with hardware for control purposes, part of any application will inevitably remain explicitly programmed—for example, to provide integration points. Adopting the proposed solution will substantially ease the manual development of low‑level, programmatically expressed control logic and will also facilitate integration with machine‑learning products.
-
-So, the answer to the question "why" is: to have a problem-specific tool and use it instead of C++ where it make sense.
+While based on the discrete-time, clocked data-flow paradigm (similar to Unreal Engine Blueprints), TealScript departs from strict functional purity. Each compute node is an instance of an object that syntactically resembles a function, but can retain state between execution cycles via instance variables accessible through the this keyword. This makes writing complex state machines or PID controllers as easy as writing simple C functions.
 
 
-## The Data-flow Graph Paradigm
+## Why TealScript?
 
-The data-flow graph paradigm (discrete-time, clocked, modular, data-centric) is a declarative, purely functional approach. Unlike imperative languages, programs in this paradigm has no single entry point. Instead, the developer describes a set of compute elements (also called "cells" or "nodes") wired together into a computation network according to a logical schema that represents the solution to a given problem. Each compute element runs independently - possibly concurrently in multi-threaded mode - and whenever an element finishes it re-executes (with updated inputs which are outputs from other elements). This cycle continues until the system is stopped. Good examples of some of the data-flow graph paradigm concepts adoptions are artificial neural networks and Unreal Engine Blueprints.
+When designing control logic, it is tempting to specify what the outcome should be, rather than script how to achieve it step-by-step. While C++ is imperative and requires detailed architectural design, TealScript allows you to broaden your programming approaches without changing your C++ toolchain. 
 
+You get a problem-specific tool to handle complex control schemes for multiple actuators based on numerous sensor signals, drastically reducing the low-level C++ boilerplate required for wiring, state management, and multi-threading, while keeping full native extensibility.
 
-## Application
+## Key Features
 
-This scripting language excels at complex real-time control logic: logical schemas written in the language can manage many physical or software actuators, indicators, and displays in parallel by analyzing signals from numerous input devices. The language is also Turing-complete - its type system, constructs, and operations enable it to handle tasks normally solved by general-purpose languages. Extensibility from host code further broadens its applicability.
-
-Possible applications for this engine include:
-
- * Automating systems that combine embedded computers, electronics, sensors, actuators, and monitoring.
- * Logically linking separately attached hardware or virtual devices.
- * Adding programmatic intelligence to simpler components.
- * Parallel analysis and consolidation of related input data from many sources.
+ * Network-Agnostic Distributed Graphs: Seamlessly link variables across different hosts using extern URIs. Built on a custom UDP multiplexing protocol (MTU-safe 1400 bytes) that eliminates Head-of-Line blocking without the overhead of TCP or heavy brokers like MQTT.
+ * True Multi-Threading: Execute graph schemas in parallel across available CPU cores. The interpreter safely handles node execution without requiring the user to manage C++ threads or locks.
+ * Zero Dependencies & Portable: Implemented as a custom execution tree interpreter (no LLVM/external lexers). It compiles into any C++20 codebase via CMake and is completely hardware-agnostic.
+ * Turing Complete & Extensible: Handle general-purpose tasks, math (vec4, mat4), JSON, and custom C++ types. Easily inject host functions into the scripting runtime.
 
 
-## Usage
+## Quick Example
 
-To add support for TealScript into your C++ application, you need at least C++20 standard capable compiler. Include [header file](src/tealscript_runtime.hpp) from your C++ source file, then instantiate TealScript runtime object, load source code and extensions shared libraries into it and execute in single- or multi-threaded mode. To extend the scripting language with functions, variables and objects, you should add entities separately or in form of extension to this runtime object, using rules described in the document mentioned below, in "More information" section. You can explore the [interpreter](examples/interpreter/main.cpp) application source code and scripts [extending_example](examples/extending_example.teal), [alu74181](examples/alu74181.teal), [tbbt_2cola](examples/tbbt_2cola.teal), [example](examples/example.teal), [draft](examples/draft.teal) as the examples of embedding a library and extending of the language's functionality. 
+A logical schema written in TealScript manages physical actuators in parallel by analyzing signals from input devices:
 
-Note: In order to run some of the examples, you should install Raylib and Zeromq libraries before the build in the Linux environment.
+``` TealScript
+// input values from C++ host
+'in' in;
+'kp' kp;
+'ki' ki;
+'kd' kd;
+'km' km;
+
+// worker computation nodes declarative schema
+difference      diff1(in, pid);
+pid_regulator   pid(diff1, kp, ki, kd) 'pid_out';
+difference      diff2(in, mr);
+math_regulator  mr(diff2, km) 'pow_out';
+logprint        pv(in, diff1, pid, diff2, mr);
+
+// computation nodes functionality...
+
+// PID regulator
+pid_regulator(err, kp, ki, kd) {
+    if(this.prev_t == undefined) {
+        this.prev_t = steady_clock();
+        this.prev_err = (float)err;
+        this.integral = 0.0;
+    }
+    t = steady_clock();
+    dt = t - this.prev_t;
+    if(dt > 0.0) {
+        this.prev_t = t;
+        proportional = err;
+        this.integral += err * dt;
+        derivative = (err - this.prev_err) / dt;
+        this.prev_err = (float)err;
+        output = kp * proportional + ki * this.integral + kd * derivative;
+        return output;
+    }
+}
+
+// Alternative regulator...
+math_regulator(err, km) {
+    if(this.output == undefined) {
+        this.output = 0.0;
+        this.prev_t = steady_clock();
+    }
+    t = steady_clock();
+    dt = t - this.prev_t;
+    if(dt > 0.0) {
+        this.prev_t = t;
+        delta = km * dt * (pow(err * 0.02, 3) - pow(err * 0.0199999, 3) + 100000.0 * sin(err * .000001));
+        if(abs(delta) > abs(err)) {
+            delta = 0.333 * err;
+        }
+        this.output += delta;
+        return this.output;
+    }
+}
+
+first_defined(a, b) return a != undefined ? a : b;
+forward(val) return val;
+difference(a, b) return a - b;
+
+val_with_rand(v, dev, expire_time) {
+    if(this.prev_t == undefined) {
+        this.prev_t = steady_clock();
+        this.delta = (randf() - 0.5) * 2.0 * dev;
+    }
+    t = steady_clock();
+    dt = t - this.prev_t;
+    if(dt > expire_time) {
+        this.delta = (randf() - 0.5) * 2.0 * dev;
+        this.prev_t = t;
+    }
+    return v + this.delta;
+}
+
+logprint(in, e1, pidval, e2, mathval) {
+    t = steady_clock();
+    dt = t - this.prev_t;
+    if(dt > 0.1) {
+        console.fixed();
+        this.prev_t = t;
+        console.print("[ target: ", in,
+            " || err1: ", e1, ", PID val: ", pidval,
+            " | err2: ", e2, ", Math val: ", mathval,
+            " ]"
+        );
+    }
+}
+```
 
 
-## Demos and Examples
+## Application & Use Cases
 
-To build example application, CMake script is provided. In addition, for Linux users there is a Shell scripts for building and running some of the examples...
+TealScript excels at "sense → compute → act" pipelines: 
+
+ * Robotics & Autonomous Systems: High-throughput signal processing, sensor fusion, and driving actuators in real time.
+ * Industrial Automation: Replacing heavy PLC logic with portable C++ integrations.
+ * Edge Computing / IoT: Orchestration of distributed controllers without centralized message brokers.
+ * Simulations & Digital Twins: Logical linking of separately attached hardware or virtual devices.
+     
+
+## Usage & Integration
+
+Requires a C++20 compatible compiler.
+
+1. Include the header file: #include "tealscript_runtime.hpp" 
+2. Instantiate the TealScript runtime object. 
+3. Load source code and register C++ extensions (functions, variables, custom types). 
+4. Execute in single- or multi-threaded mode. 
+
+To build the examples (requires Raylib and ZeroMQ on Linux): 
+``` bash 
+mkdir build && cd build
+cmake ..
+make
+```
+
+Explore the [examples](examples/), directory for advanced use cases like the ALU 74181 hardware simulation  and host-side C++ extensions. 
 
 
-# More information
+## More Information
 
-For more information, read this [PDF document](doc/tealscript_overview.pdf)
+For the complete language specification, type system, and host API reference, see the [Documentation](doc/tealscript_overview.pdf). (PDF - Migrating to Markdown docs is in progress).
