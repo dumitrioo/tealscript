@@ -1,6 +1,6 @@
 # TealScript
 
-TealScript is a lightweight, distributed, and deterministic control logic engine - free from heavy message brokers (ROS/MQTT) and garbage collection overhead, with native C++ integration. 
+TealScript is a lightweight, distributed, and deterministic control logic engine - free from heavy message brokers (ROS/MQTT) and garbage collection overhead, with native C++ integration.
 
 It is an embedded scripting language designed to seamlessly wire physical and virtual devices into a unified control system. The language enforces strict, declarative rules for building schemas, making complex logic highly readable and maintainable. Combined with seamless C++ host extensibility, the result is a deterministic, cohesive hardware-software ecosystem driven entirely by data-flow graphs.
 
@@ -18,7 +18,7 @@ You get a problem-specific tool to handle complex control schemes for multiple a
 
 ## Key Features
 
- * Network-Agnostic Distributed Graphs: Seamlessly link variables across different hosts using extern URIs. Built on a custom UDP multiplexing protocol (MTU-safe 1400 bytes) that eliminates Head-of-Line blocking without the overhead of TCP or heavy brokers like MQTT.
+ * Network-Agnostic Distributed Graphs: Seamlessly link variables across different hosts using extern URIs. Built on a custom UDP multiplexing protocol (MTU-safe 1400 bytes) that eliminates Head-of-Line blocking without the overhead of TCP or heavy brokers like MQTT (see [example script](examples/external_value.teal)).
  * True Multi-Threading: Execute graph schemas in parallel across available CPU cores. The interpreter safely handles node execution without requiring the user to manage C++ threads or locks.
  * Zero Dependencies & Portable: Implemented as a custom execution tree interpreter (no LLVM/external lexers). It compiles into any C++20 codebase via CMake and is completely hardware-agnostic.
  * Turing Complete & Extensible: Handle general-purpose tasks, math (functions, matrices), JSON, and custom host-provided types. Easily inject host functions into the scripting runtime.
