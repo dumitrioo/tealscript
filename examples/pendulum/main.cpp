@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
     teal_rt.loading_complete();
     teal_rt.run_cycle();
 
-    // 1. INIT BULLET PHYSICS
+    // INIT BULLET PHYSICS
     uniqp_t<btDefaultCollisionConfiguration> collisionConfiguration{std::make_unique<btDefaultCollisionConfiguration>()};
     uniqp_t<btCollisionDispatcher> dispatcher{std::make_unique<btCollisionDispatcher>(collisionConfiguration.get())};
     uniqp_t<btBroadphaseInterface> overlappingPairCache{std::make_unique<btDbvtBroadphase>()};
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
 
     dynamicsWorld->setGravity(btVector3(0, -9.81, 0));
 
-    // 2. Ground
+    // Ground
     uniqp_t<btCollisionShape> groundShape{std::make_unique<btStaticPlaneShape>(btVector3(0, 1, 0), 0)};
     uniqp_t<btDefaultMotionState> groundMotionState{std::make_unique<btDefaultMotionState>(
         btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 0)))
@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     uniqp_t<btRigidBody> groundBody{std::make_unique<btRigidBody>(groundRigidBodyCI)};
     dynamicsWorld->addRigidBody(groundBody.get());
 
-    // 3. Cart
+    // Cart
     uniqp_t<btCollisionShape> cartShape{std::make_unique<btBoxShape>(btVector3(0.5, 0.15, 0.3))};
     uniqp_t<btCollisionObject> cartCollisionObj{std::make_unique<btCollisionObject>()};
     cartCollisionObj->setCollisionShape(cartShape.get());
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     uniqp_t<btRigidBody> cartBody{std::make_unique<btRigidBody>(cartRigidBodyCI)};
     dynamicsWorld->addRigidBody(cartBody.get());
 
-    // 4. Pendulum
+    // Pendulum
     uniqp_t<btCollisionShape> poleShape{std::make_unique<btBoxShape>(btVector3(0.005, 1.0, 0.005))};
     btScalar poleMass = teal_rt.get_output("pend_mass").cast_to_double();
     btVector3 poleInertia(0,0,0);
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     uniqp_t<btRigidBody> poleBody{std::make_unique<btRigidBody>(poleRigidBodyCI)};
     dynamicsWorld->addRigidBody(poleBody.get());
 
-    // 5. Connection
+    // Connection
     uniqp_t<btHingeConstraint> poleHinge{std::make_unique<btHingeConstraint>(
         *poleBody,
         *cartBody,
@@ -101,10 +101,7 @@ int main(int argc, char **argv) {
         poleBody->applyCentralImpulse(btVector3(start_force, 0, 0));
     }
 
-    // 6. Simulation (Sense -> Compute -> Act)
-    double sim_cycle_time = 1.0 / 100.0;
     double prev_ang{0};
-    long double prev_time{teal::steady_time_sec()};
     double angle = 0;
     double ang_vel = 0;
     double force = 0;
@@ -204,7 +201,10 @@ int main(int argc, char **argv) {
         }
     };
 
-    for(int64_t i = 0; !should_close; ++i) {
+    // Simulation
+    double sim_cycle_time = 1.0 / 100.0;
+    long double prev_time{teal::steady_time_sec()};
+    while(!should_close) {
         std::this_thread::sleep_for(std::chrono::duration<double, std::ratio<1, 1>>{sim_cycle_time});
         long double curr_time{teal::steady_time_sec()};
         double dt = curr_time - prev_time;
@@ -222,15 +222,15 @@ int main(int argc, char **argv) {
         btVector3 cart_vel_vec = cartBody->getLinearVelocity();
         cart_vel = cart_vel_vec.getX();
 
-        // --- COMPUTE (TealScript) ---
+        // Sensors update
         teal_rt.set_input("dt", dt);
         teal_rt.set_input("ang", angle);
         teal_rt.set_input("cart_pos", cart_x);
         teal_rt.set_input("cart_vel", cart_vel);
+        // Compute
         teal_rt.run_cycle();
+        // Fetch controllong value from runtime
         force = teal_rt.get_output("motor_force").cast_to_double();
-
-        // --- ACT ---
         cartBody->activate();
         poleBody->activate();
         // Apply force X

@@ -12,12 +12,3 @@ target_link_libraries(tealscript
     pthread
     dl
 )
-
-#find_library(magic_LIBRARY magic)
-#if(NOT magic_LIBRARY)
-#    message(STATUS "magic not found")
-#else()
-#    message(STATUS "magic found")
-#    add_definitions(-DUSE_FILE_MAGIC)
-#    target_link_libraries(tealscript magic)
-#endif()

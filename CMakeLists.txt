@@ -20,7 +20,6 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -ftree-vectorize -mavx2 -ftree-vectorizer-verbose=5 -fstrict-aliasing -Wall -Wextra -rdynamic -fPIC -Wno-maybe-uninitialized -Wno-unused-function -Wno-unused-parameter -Wl,-rpath,.")
 
 add_definitions(-DTEAL_USE_EXTERNAL_VALUES)
-add_definitions(-DSTR_UTIL_ENABLE_CUSTOM_UNICODE_OPERATIONS)
 
 add_subdirectory(examples/interpreter)
 add_subdirectory(examples/fractal)
