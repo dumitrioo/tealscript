@@ -35,15 +35,11 @@ balance_pid(angle, dt) {
         this.p_error = 0.0;
         this.i_error = 0.0;
     }
-    kp = 60.0;
-    ki = 20.0;
-    kd = 20.0;
     prev_ang = this.p_error;
     this.p_error = angle;
     this.i_error = dt * this.i_error + angle;
     d_error = (angle - prev_ang) / dt;
-    res = kp * this.p_error + ki * this.i_error + kd * d_error;
-    return res;
+    return 60.0 * this.p_error + 20.0 * this.i_error + 20.0 * d_error;
 }
 
 // Lazy centering
@@ -71,7 +67,7 @@ mixer(balance_force, center_force, wall_force) {
 'cart_pos' cart_pos;
 'cart_vel' cart_vel;
 
-// Compute nodes
+// Worker nodes
 balance_pid balancer(angle, dt);
 center_pid centerer(cart_pos, cart_vel);
 soft_wall wall(cart_pos);
@@ -108,6 +104,14 @@ To build the examples (on Linux):
 mkdir build && cd build
 cmake ..
 make
+```
+
+Or you can just use shell script
+
+``` bash 
+git clone https://github.com/dumitrioo/tealscript.git
+cd tealscript
+./build_linux_cmake.sh
 ```
 
 Explore the [examples](examples/), directory for advanced use cases like the ALU 74181 hardware simulation  and host-side C++ extensions. 
