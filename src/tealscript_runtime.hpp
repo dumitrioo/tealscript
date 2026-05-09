@@ -27,7 +27,9 @@
 
 #include "ext/array_buffer_ext.hpp"
 #include "ext/containers_ext.hpp"
+#ifndef TEALSCRIPT_NO_EIGEN
 #include "ext/eigen_ext.hpp"
+#endif
 #include "ext/file_ext.hpp"
 #include "ext/crypto_ext.hpp"
 #include "ext/cpu_ext.hpp"
@@ -216,7 +218,9 @@ namespace teal {
             });
 
             array_buffer_ext_.register_runtime(this);
+#ifndef TEALSCRIPT_NO_EIGEN
             eigen_ext_.register_runtime(this);
+#endif
             math_ext_.register_runtime(this);
             time_ext_.register_runtime(this);
             crypt_.register_runtime(this);
@@ -1191,7 +1195,9 @@ namespace teal {
             crypt_.unregister_runtime();
             fpool_.unregister_runtime();
             perf_stat_.unregister_runtime();
+#ifndef TEALSCRIPT_NO_EIGEN
             eigen_ext_.unregister_runtime();
+#endif
             randlib_.unregister_runtime();
             time_ext_.unregister_runtime();
             math_ext_.unregister_runtime();
@@ -1351,7 +1357,7 @@ namespace teal {
 
         void add_object_unary_operation(
             std::string const &class_name, std::string const &op_code,
-            std::function<valbox(valbox const &)> const &fun
+            std::function<valbox(valbox &)> const &fun
         ) override {
             std::unique_lock l{obj_ser_mtp_};
             obj_svc_[class_name].unops[op_code] = fun;
@@ -1359,7 +1365,7 @@ namespace teal {
 
         void add_object_binary_operation(
             std::string const &class_name, std::string const &op_code,
-            std::function<valbox(valbox const &, valbox const &)> const &fun
+            std::function<valbox(valbox &, valbox &)> const &fun
         ) override {
             std::unique_lock l{obj_ser_mtp_};
             obj_svc_[class_name].binops[op_code] = fun;
@@ -2133,8 +2139,9 @@ namespace teal {
         array_buffer_ext array_buffer_ext_{};
         socket_ext sockext_{};
         containers_ext dict_ext_{};
+#ifndef TEALSCRIPT_NO_EIGEN
         eigen_ext eigen_ext_{};
-
+#endif
         mutable shared_mutex obj_ser_mtp_{};
         std::map<std::string, obj_services> obj_svc_{};
         friend class valbox;

@@ -11,15 +11,15 @@ balance_pid(angle, dt) {
     if(this.p_error == undefined) {
         this.p_error = 0.0;
         this.i_error = 0.0;
-        this.kp = 60.0;
-        this.ki = 20.0;
-        this.kd = 20.0;
     }
+    kp = 60.0;
+    ki = 20.0;
+    kd = 20.0;
     prev_ang = this.p_error;
     this.p_error = angle;
     this.i_error = dt * this.i_error + angle;
     d_error = (angle - prev_ang) / dt;
-    res = this.kp * this.p_error + this.ki * this.i_error + this.kd * d_error;
+    res = kp * this.p_error + ki * this.i_error + kd * d_error;
     return res;
 }
 
@@ -27,7 +27,7 @@ balance_pid(angle, dt) {
 center_pid(cart_pos, cart_vel) {
     return abs(cart_pos) < 2
         ?
-        2.0 * sqrt(abs(cart_pos)) * sign(cart_pos) + 2.0 * sqrt(abs(cart_vel)) * sign(cart_vel)
+        4.0 * sqrt(abs(cart_pos)) * sign(cart_pos) + 4.0 * sqrt(abs(cart_vel)) * sign(cart_vel)
         :
         2.0 * sign(cart_pos) + 2.0 * sign(cart_vel);
 }

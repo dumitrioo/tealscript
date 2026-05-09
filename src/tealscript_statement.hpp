@@ -127,7 +127,22 @@ namespace teal {
             teal::shut_on_destroy leave_frame{[&]() {
                 ctx->del_stack_frame();
             }};
-            if(cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).cast_to_bool()) {
+            bool bcond{false};
+            valbox cond{cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
+            if(cond.is_class_ref()) {
+                str_map_t<std::function<valbox(valbox &)>> const *unops{
+                    &(ctx->rt_interface()->get_object_services(cond.class_name())->unops)
+                };
+                if(unops != nullptr) {
+                    auto it{unops->find("(bool)")};
+                    if(it != unops->end()) {
+                        bcond = it->second(cond).cast_to_bool();
+                    }
+                }
+            } else {
+                bcond = cond.cast_to_bool();
+            }
+            if(bcond) {
                 if_stat_->exec(ctx);
             } else {
                 if(else_stat_) {
@@ -217,11 +232,51 @@ namespace teal {
             teal::shut_on_destroy leave_frame{[&]() {
                 ctx->del_stack_frame();
             }};
-            while(cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).cast_to_bool()) {
+
+            valbox cond{cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
+            bool bcond{false};
+            std::string classname{};
+            str_map_t<std::function<valbox(valbox &)>> const *unops{nullptr};
+            std::function<valbox(valbox &)> converter{};
+            if(cond.is_class_ref()) {
+                classname = cond.class_name();
+                unops = &(ctx->rt_interface()->get_object_services(classname)->unops);
+                if(unops == nullptr) {
+                    throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                }
+                auto it{unops->find("(bool)")};
+                if(it == unops->end()) {
+                    throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                }
+                converter = it->second;
+                bcond = converter(cond).cast_to_bool();
+            } else {
+                bcond = cond.cast_to_bool();
+            }
+            while(bcond) {
                 if(stat_) { stat_->exec(ctx); }
                 if(ctx->return_requested()) { return; }
                 if(ctx->continue_requested()) { ctx->clear_continue_request(); continue; }
                 if(ctx->break_requested()) { ctx->clear_break_request(); break; }
+                cond = cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref();
+                if(cond.is_class_ref()) {
+                    if(cond.class_name() != classname) {
+                        classname = cond.class_name();
+                        unops = &(ctx->rt_interface()->get_object_services(classname)->unops);
+                        if(unops == nullptr) {
+                            throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                        }
+                        auto it{unops->find("(bool)")};
+                        if(it == unops->end()) {
+                            throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                        }
+                        converter = it->second;
+                    }
+                    bcond = converter(cond).cast_to_bool();
+                } else {
+                    classname.clear();
+                    bcond = cond.cast_to_bool();
+                }
             }
         }
 
@@ -252,26 +307,102 @@ namespace teal {
             teal::shut_on_destroy leave_frame{[&]() {
                 ctx->del_stack_frame();
             }};
-
+            init_expr_->eval(ctx, eval_caller_type::no_matter, nullptr);
             if(stat_->empty_statement()) {
-                for(
-                    init_expr_->eval(ctx, eval_caller_type::no_matter, nullptr);
-                    cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).cast_to_bool();
-                    incr_expr_->eval(ctx, eval_caller_type::no_matter, nullptr)
-                );
-            } else {
-                for(
-                    init_expr_->eval(ctx, eval_caller_type::no_matter, nullptr);
-                    cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).cast_to_bool();
-                    incr_expr_->eval(ctx, eval_caller_type::no_matter, nullptr)
-                ) {
+                valbox cond{cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
+                bool bcond{false};
+                std::string classname{};
+                str_map_t<std::function<valbox(valbox &)>> const *unops{nullptr};
+                std::function<valbox(valbox &)> converter{};
+                if(cond.is_class_ref()) {
+                    classname = cond.class_name();
+                    unops = &(ctx->rt_interface()->get_object_services(classname)->unops);
+                    if(unops == nullptr) {
+                        throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                    }
+                    auto it{unops->find("(bool)")};
+                    if(it == unops->end()) {
+                        throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                    }
+                    converter = it->second;
+                    bcond = converter(cond).cast_to_bool();
+                } else {
+                    bcond = cond.cast_to_bool();
+                }
+                while(bcond) {
                     stat_->exec(ctx);
                     if(ctx->return_requested()) { return; }
                     if(ctx->continue_requested()) { ctx->clear_continue_request(); continue; }
                     if(ctx->break_requested()) { ctx->clear_break_request(); break; }
+                    incr_expr_->eval(ctx, eval_caller_type::no_matter, nullptr);
+                    cond = cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref();
+                    if(cond.is_class_ref()) {
+                        if(cond.class_name() != classname) {
+                            classname = cond.class_name();
+                            unops = &(ctx->rt_interface()->get_object_services(classname)->unops);
+                            if(unops == nullptr) {
+                                throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                            }
+                            auto it{unops->find("(bool)")};
+                            if(it == unops->end()) {
+                                throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                            }
+                            converter = it->second;
+                        }
+                        bcond = converter(cond).cast_to_bool();
+                    } else {
+                        classname.clear();
+                        bcond = cond.cast_to_bool();
+                    }
+                }
+            } else {
+                valbox cond{cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
+                bool bcond{false};
+                std::string classname{};
+                str_map_t<std::function<valbox(valbox &)>> const *unops{nullptr};
+                std::function<valbox(valbox &)> converter{};
+                if(cond.is_class_ref()) {
+                    classname = cond.class_name();
+                    unops = &(ctx->rt_interface()->get_object_services(classname)->unops);
+                    if(unops == nullptr) {
+                        throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                    }
+                    auto it{unops->find("(bool)")};
+                    if(it == unops->end()) {
+                        throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                    }
+                    converter = it->second;
+                    bcond = converter(cond).cast_to_bool();
+                } else {
+                    bcond = cond.cast_to_bool();
+                }
+                while(bcond) {
+                    stat_->exec(ctx);
+                    if(ctx->return_requested()) { return; }
+                    if(ctx->continue_requested()) { ctx->clear_continue_request(); continue; }
+                    if(ctx->break_requested()) { ctx->clear_break_request(); break; }
+                    incr_expr_->eval(ctx, eval_caller_type::no_matter, nullptr);
+                    cond = cond_expr_->eval(ctx, eval_caller_type::no_matter, nullptr).deref();
+                    if(cond.is_class_ref()) {
+                        if(cond.class_name() != classname) {
+                            classname = cond.class_name();
+                            unops = &(ctx->rt_interface()->get_object_services(classname)->unops);
+                            if(unops == nullptr) {
+                                throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                            }
+                            auto it{unops->find("(bool)")};
+                            if(it == unops->end()) {
+                                throw runtime_error{line(), col(), "invalid condition conversion to logical value"};
+                            }
+                            converter = it->second;
+                        }
+                        bcond = converter(cond).cast_to_bool();
+                    } else {
+                        classname.clear();
+                        bcond = cond.cast_to_bool();
+                    }
                 }
             }
-
         }
 
     private:

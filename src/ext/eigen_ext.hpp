@@ -13,7 +13,7 @@ namespace teal {
 
     namespace detail {
 
-        static std::optional<Eigen::MatrixXd> mb_constr(valbox const &vb) {
+        static std::optional<Eigen::MatrixXd> mb_construct_from(valbox const &vb) {
             if(vb.is_mat4_ref()) {
                 Eigen::MatrixXd res;
                 res.resize(4, 4);
@@ -75,7 +75,7 @@ namespace teal {
                         for(int r{}; r < args[0].cast_to_int(); ++r) {
                             for(int c{}; c < args[1].cast_to_int(); ++c) {
                                 int ai{r * args[1].cast_to_int() + c};
-                                if(args[2].as_array().size() > ai) {
+                                if((int)args[2].as_array().size() > ai) {
                                     res(r, c) = args[2].as_array().at(ai).cast_to_double();
                                 }
                             }
@@ -87,8 +87,25 @@ namespace teal {
                 return teal::valbox{std::move(res), "matrix"};
             });
 
+            rt->add_object_binary_operation("matrix", "=",
+                [](valbox &l, valbox &r) -> valbox {
+                    if(l.class_name() == "matrix") {
+                        if(r.class_name() == "matrix") {
+                            l.as_class<Eigen::MatrixXd>() = r.as_class<Eigen::MatrixXd>();
+                        } else {
+                            if(std::optional<Eigen::MatrixXd> omr{detail::mb_construct_from(r)}) {
+                                l.as_class<Eigen::MatrixXd>() = *omr;
+                            }
+                        }
+                    } else {
+                        l.assign(r);
+                    }
+                    return l;
+                }
+            );
+
             rt->add_object_binary_operation("matrix", "*",
-                [](valbox const &l, valbox const &r) -> valbox {
+                [](valbox &l, valbox &r) -> valbox {
                     if(l.class_name() == "matrix" && r.class_name() == "matrix") {
                         Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() * r.as_class<Eigen::MatrixXd>()};
                         return teal::valbox{std::move(mr), "matrix"};
@@ -96,7 +113,7 @@ namespace teal {
                         if(r.is_numeric()) {
                             Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() * r.cast_to_double()};
                             return teal::valbox{mr, "matrix"};
-                        } else if(auto ortsw{detail::mb_constr(r)}) {
+                        } else if(auto ortsw{detail::mb_construct_from(r)}) {
                             Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() * *ortsw};
                             return teal::valbox{mr, "matrix"};
                         }
@@ -104,7 +121,7 @@ namespace teal {
                         if(l.is_numeric()) {
                             Eigen::MatrixXd mr{l.cast_to_double() * r.as_class<Eigen::MatrixXd>()};
                             return teal::valbox{mr, "matrix"};
-                        } else if(auto oltsw{detail::mb_constr(l)}) {
+                        } else if(auto oltsw{detail::mb_construct_from(l)}) {
                             Eigen::MatrixXd mr{*oltsw * r.as_class<Eigen::MatrixXd>()};
                             return teal::valbox{mr, "matrix"};
                         }
@@ -114,7 +131,7 @@ namespace teal {
             );
 
             rt->add_object_binary_operation("matrix", "/",
-                [](valbox const &l, valbox const &r) -> valbox {
+                [](valbox &l, valbox &r) -> valbox {
                     if(l.class_name() == "matrix" && r.is_numeric()) {
                         Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() / r.cast_to_double()};
                         return teal::valbox{mr, "matrix"};
@@ -124,18 +141,18 @@ namespace teal {
             );
 
             rt->add_object_binary_operation("matrix", "-",
-                [](valbox const &l, valbox const &r) -> valbox {
+                [](valbox &l, valbox &r) -> valbox {
                     if(l.class_name() == "matrix" && r.class_name() == "matrix") {
                         Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() - r.as_class<Eigen::MatrixXd>()};
                         return teal::valbox{mr, "matrix"};
                     } else if(l.class_name() == "matrix") {
-                        auto rm{detail::mb_constr(r)};
+                        auto rm{detail::mb_construct_from(r)};
                         if(rm) {
                             Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() - *rm};
                             return teal::valbox{mr, "matrix"};
                         }
                     } else if(r.class_name() == "matrix") {
-                        auto lm{detail::mb_constr(l)};
+                        auto lm{detail::mb_construct_from(l)};
                         if(lm) {
                             Eigen::MatrixXd mr{*lm - l.as_class<Eigen::MatrixXd>()};
                             return teal::valbox{mr, "matrix"};
@@ -146,7 +163,7 @@ namespace teal {
             );
 
             rt->add_object_unary_operation("matrix", "-",
-                [](valbox const &v) -> valbox {
+                [](valbox &v) -> valbox {
                     if(v.class_name() == "matrix") {
                         Eigen::MatrixXd mr{-v.as_class<Eigen::MatrixXd>()};
                         return teal::valbox{mr, "matrix"};
@@ -156,18 +173,18 @@ namespace teal {
             );
 
             rt->add_object_binary_operation("matrix", "+",
-                [](valbox const &l, valbox const &r) -> valbox {
+                [](valbox &l, valbox &r) -> valbox {
                     if(l.class_name() == "matrix" && r.class_name() == "matrix") {
                         Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() + r.as_class<Eigen::MatrixXd>()};
                         return teal::valbox{mr, "matrix"};
                     } else if(l.class_name() == "matrix") {
-                        auto rm{detail::mb_constr(r)};
+                        auto rm{detail::mb_construct_from(r)};
                         if(rm) {
                             Eigen::MatrixXd mr{l.as_class<Eigen::MatrixXd>() + *rm};
                             return teal::valbox{mr, "matrix"};
                         }
                     } else if(r.class_name() == "matrix") {
-                        auto lm{detail::mb_constr(l)};
+                        auto lm{detail::mb_construct_from(l)};
                         if(lm) {
                             Eigen::MatrixXd mr{*lm + l.as_class<Eigen::MatrixXd>()};
                             return teal::valbox{mr, "matrix"};
@@ -177,8 +194,26 @@ namespace teal {
                 }
             );
 
+            rt->add_object_unary_operation("matrix", "(bool)",
+                [](valbox &v) -> valbox {
+                    if(v.class_name() == "matrix") {
+                        bool res{false};
+                        for(int r{}; r < v.as_class<Eigen::MatrixXd>().rows(); ++r) {
+                            for(int c{}; c < v.as_class<Eigen::MatrixXd>().cols(); ++c) {
+                                if(v.as_class<Eigen::MatrixXd>()(r, c) != 0.0) {
+                                    res = true;
+                                    break;
+                                }
+                            }
+                        }
+                        return res;
+                    }
+                    throw std::runtime_error{"invalid operand"};
+                }
+            );
+
             rt->add_object_unary_operation("matrix", "+",
-                [](valbox const &v) -> valbox {
+                [](valbox &v) -> valbox {
                     if(v.class_name() == "matrix") {
                         return teal::valbox{v.as_class<Eigen::MatrixXd>(), "matrix"};
                     }
@@ -193,6 +228,7 @@ namespace teal {
                         ser << "martix" << v.as_class<Eigen::MatrixXd>().rows() << v.as_class<Eigen::MatrixXd>().cols();
                         for(int r{}; r < v.as_class<Eigen::MatrixXd>().rows(); ++r) {
                             for(int c{}; c < v.as_class<Eigen::MatrixXd>().cols(); ++c) {
+                                ser << v.as_class<Eigen::MatrixXd>()(r, c);
                             }
                         }
                         return data_to_base64_str(ser.data_vec());

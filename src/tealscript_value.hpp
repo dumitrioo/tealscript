@@ -131,10 +131,10 @@ namespace teal {
     public:
         using vec4_t = teal::math::vector4<double>;
         using mat4_t = teal::math::matrix4<double>;
-
-    private:
         using array_t = std::deque<valbox>;
         using object_t = str_map_t<valbox>;
+
+    private:
         using value_t = std::variant<
             bool,
             char,

@@ -71,8 +71,17 @@ my_drafts(host_data) {
     console.fixed();
     console.setprecision(0);
 
+
+    for(v = matrix(4, 1, [10, 0, 0, 0]); v; v.at(0) -= 1) {
+        v.println();
+    }
+
+
+
+
     m = identity_matrix(4);
     println(m);
+    m *= 5;
     m.at(0) = 10;
     println(m);
 
@@ -111,6 +120,10 @@ my_drafts(host_data) {
     println(u);
     u.inverse();
     println(u);
+
+    if(t) {
+        println("t!");
+    }
 
     return exit();
 
