@@ -85,6 +85,8 @@ mixer motor_control(balancer, centerer, wall) 'motor_force';
 
 [![Watch the video](https://github.com/dumitrioo/tealscript/blob/main/resources/pid_demo.png)](https://github.com/dumitrioo/tealscript/blob/main/resources/pid_demo.mp4)
 
+https://github.com/dumitrioo/tealscript/blob/main/resources/pid_demo.mp4
+
 [Example application](examples/pendulum/main.cpp)
 
 ## Application & Use Cases
