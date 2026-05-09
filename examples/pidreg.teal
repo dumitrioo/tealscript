@@ -1,37 +1,40 @@
-repeater(v) return v;
+pass(v) return v;
 
 // Configuration for host code
-repeater friction_force(0.5) 'friction_force';
-repeater cart_mass(1.) 'cart_mass';
-repeater pend_mass(.3) 'pend_mass';
-repeater start_force_impulse(0.6) 'start_force_impulse';
+pass friction_force(10.5) 'friction_force';
+pass cart_mass(1.0) 'cart_mass';
+pass pend_mass(0.3) 'pend_mass';
+pass start_force_impulse(0.5) 'start_force_impulse';
 
 // PID balancing
 balance_pid(angle, dt) {
     if(this.p_error == undefined) {
         this.p_error = 0.0;
         this.i_error = 0.0;
-        this.kp = 100.0;
+        this.kp = 60.0;
         this.ki = 20.0;
         this.kd = 20.0;
     }
-    prev_cte = this.p_error;
+    prev_ang = this.p_error;
     this.p_error = angle;
-    this.i_error = (1.0 * dt) * this.i_error + angle;
-    d_error = (angle - prev_cte) / (1.0 * dt);
+    this.i_error = dt * this.i_error + angle;
+    d_error = (angle - prev_ang) / dt;
     res = this.kp * this.p_error + this.ki * this.i_error + this.kd * d_error;
     return res;
 }
 
 // Lazy centering
 center_pid(cart_pos, cart_vel) {
-    return 4.0 * sqrt(abs(cart_pos)) * sign(cart_pos) + 4.0 * sqrt(abs(cart_vel)) * sign(cart_vel);
+    return abs(cart_pos) < 2
+        ?
+        2.0 * sqrt(abs(cart_pos)) * sign(cart_pos) + 2.0 * sqrt(abs(cart_vel)) * sign(cart_vel)
+        :
+        2.0 * sign(cart_pos) + 2.0 * sign(cart_vel);
 }
 
 // "Soft wall"
 soft_wall(cp) {
-    lim = 4.5;
-    return cp > lim ? -50.0 * (cp - lim) : cp < -lim ? -50.0 * (cp + lim) : 0.0;
+    return abs(cp) > 4.5 ? sign(cp) * 8.0 : 0.0;
 }
 
 mixer(balance_force, center_force, wall_force) {
