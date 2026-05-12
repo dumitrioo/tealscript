@@ -44,6 +44,14 @@ some_value_issuer() {
 
         if(choice == 7) this.res = timestamp();
 
+        if(choice == 8) this.res = matrix(
+                                       2, 2, 
+                                       [
+                                        1,2,
+                                        3,4
+                                       ]
+                                   );
+
         console.print("original value changed to: ", this.res);
     }
     return this.res;

@@ -4,10 +4,6 @@
 #include <filesystem>
 #include <iostream>
 
-#if 0
-#include <inc/binned_allocator.hpp>
-#endif
-
 #include <tealscript_runtime.hpp>
 
 // Just a regular C++ class to be added as an <<object type>> to the scripting runtime
@@ -22,14 +18,14 @@ private:
     int v_{};
 };
 
-#if 0
+#ifdef USE_CUSTOM_MEMORY_ALLOCATION
 
-static teal::sorting_alloc<256 * 1024 * 1024, 16, 1024> srtalloc{};
+static teal::binned_allocator<512 * 1024 * 1024, 16, 4096> glbl_alloc{};
 
 void* operator new(std::size_t sz) {
     if(sz == 0) { ++sz; }
 
-    if(void *ptr = srtalloc.allocate(sz)) {
+    if(void *ptr = glbl_alloc.allocate(sz)) {
         return ptr;
     }
 
@@ -38,26 +34,26 @@ void* operator new(std::size_t sz) {
 
 void* operator new[](std::size_t sz) {
     if(sz == 0) { ++sz; }
-    if(void *ptr = srtalloc.allocate(sz)) {
+    if(void *ptr = glbl_alloc.allocate(sz)) {
         return ptr;
     }
     throw std::bad_alloc{};
 }
 
 void operator delete(void* ptr) noexcept {
-    srtalloc.deallocate(ptr);
+    glbl_alloc.deallocate(ptr);
 }
 
 void operator delete(void* ptr, std::size_t size) noexcept {
-    srtalloc.deallocate(ptr, size);
+    glbl_alloc.deallocate(ptr, size);
 }
 
 void operator delete[](void* ptr) noexcept {
-    srtalloc.deallocate(ptr);
+    glbl_alloc.deallocate(ptr);
 }
 
 void operator delete[](void* ptr, std::size_t size) noexcept {
-    srtalloc.deallocate(ptr, size);
+    glbl_alloc.deallocate(ptr, size);
 }
 
 #endif

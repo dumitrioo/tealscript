@@ -33,18 +33,18 @@ namespace teal::mt {
 
     private:
         void lock_for_write() noexcept {
-            while(true) {
-                std::int64_t wanted{0};
-                if(current_.compare_exchange_weak(wanted, 1)) {
-                    break;
-                }
+            std::int64_t wanted{0};
+            while(!current_.compare_exchange_weak(wanted, 1, std::memory_order_release, std::memory_order_acquire)) {
+                wanted = 0;
+#if MUTEX_ATOMIC_SM_SLEEP_NANOS > 0
                 maybe_wait();
+#endif
             }
         }
 
         bool try_lock_for_write() noexcept {
             std::int64_t zero{0};
-            return current_.compare_exchange_strong(zero, 1);
+            return current_.compare_exchange_strong(zero, 1, std::memory_order_release, std::memory_order_acquire);
         }
 
         void write_unlock() {
@@ -54,11 +54,11 @@ namespace teal::mt {
         }
 
     private:
-        void maybe_wait() {
 #if MUTEX_ATOMIC_SM_SLEEP_NANOS > 0
+        void maybe_wait() {
             std::this_thread::sleep_for(std::chrono::nanoseconds{MUTEX_ATOMIC_SM_SLEEP_NANOS});
-#endif
         }
+#endif
 
     private:
         std::atomic<std::int64_t> current_{0};
@@ -102,12 +102,14 @@ namespace teal::mt {
             }
             shut_on_destroy unpend{[this]() { pending_upgraders_.store(0); }};
             wanted = 1;
-            while(!current_.compare_exchange_weak(wanted, -1)) {
+            while(!current_.compare_exchange_weak(wanted, -1, std::memory_order_release, std::memory_order_acquire)) {
                 if(wanted <= 0) {
                     throw std::runtime_error{"locking counting error"};
                 }
                 wanted = 1;
+#if RW_MUTEX_ATOMIC_SM_SLEEP_NANOS > 0
                 maybe_wait();
+#endif
             }
             return true;
         }
@@ -164,13 +166,15 @@ namespace teal::mt {
                 ) {
 #endif
                     std::int64_t wanted{0};
-                    if(current_.compare_exchange_weak(wanted, -1)) {
+                    if(current_.compare_exchange_weak(wanted, -1, std::memory_order_release, std::memory_order_acquire)) {
                         return true;
                     }
 #if defined(RW_MUTEX_UPGRADEABLE) || defined(RW_MUTEX_PRIORITIES)
                 }
 #endif
+#if RW_MUTEX_ATOMIC_SM_SLEEP_NANOS > 0
                 maybe_wait();
+#endif
             }
             return false;
         }
@@ -196,7 +200,7 @@ namespace teal::mt {
                 ) {
 #endif
                     if(curr >= 0) {
-                        if(current_.compare_exchange_weak(curr, curr + 1)) {
+                        if(current_.compare_exchange_weak(curr, curr + 1, std::memory_order_release, std::memory_order_acquire)) {
                             return true;
                         }
                     } else {
@@ -205,7 +209,9 @@ namespace teal::mt {
 #if defined(RW_MUTEX_UPGRADEABLE) || defined(RW_MUTEX_PRIORITIES)
                 }
 #endif
+#if RW_MUTEX_ATOMIC_SM_SLEEP_NANOS > 0
                 maybe_wait();
+#endif
             }
             return false;
         }

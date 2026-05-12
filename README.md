@@ -5,6 +5,14 @@ TealScript is a lightweight, distributed, and deterministic control logic engine
 It is an embedded scripting language designed to seamlessly wire physical and virtual devices into a unified control system. The language enforces strict, declarative rules for building schemas, making complex logic highly readable and maintainable. Combined with seamless C++ host extensibility, the result is a deterministic, cohesive hardware-software ecosystem driven entirely by data-flow graphs.
 
 
+
+
+
+TealScript is an embedded lightweight, distributed scripting language control logic engine - free from heavy message brokers (ROS/MQTT) and garbage collection overhead, with native C++ integration, designed to seamlessly wire physical and virtual devices into a unified control system. The language enforces strict, declarative rules for building schemas, making complex logic highly readable and maintainable. Combined with seamless C++ host extensibility, the result is a deterministic, cohesive hardware-software ecosystem driven entirely by data-flow graphs.
+
+
+
+
 ## Stateful Data-Flow
 
 While based on the discrete-time, clocked data-flow paradigm (similar to Unreal Engine Blueprints), TealScript departs from strict functional purity. Each compute node is an instance of an object that syntactically resembles a function, but can retain state between execution cycles via instance variables accessible through the this keyword. This makes writing complex state machines or PID controllers as easy as writing simple functions.
@@ -29,6 +37,14 @@ You get a problem-specific tool to handle complex control schemes for multiple a
 A logical schema written in TealScript manages physical actuators in parallel by analyzing signals from input devices:
 
 ```TealScript
+pass(v) return v;
+
+// Configuration for host code
+pass friction_force(.5) 'friction_force';
+pass cart_mass(1.0) 'cart_mass';
+pass pend_mass(0.3) 'pend_mass';
+pass start_force_impulse(0.5) 'start_force_impulse';
+
 // PID balancing
 balance_pid(angle, dt) {
     if(this.p_error == undefined) {

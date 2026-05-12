@@ -6,6 +6,46 @@
 #include <raylib.h>
 #include <rlgl.h>
 
+#ifdef USE_CUSTOM_MEMORY_ALLOCATION
+
+static teal::binned_allocator<512 * 1024 * 1024, 16, 4096> glbl_alloc{};
+
+void* operator new(std::size_t sz) {
+    if(sz == 0) { ++sz; }
+
+    if(void *ptr = glbl_alloc.allocate(sz)) {
+        return ptr;
+    }
+
+    throw std::bad_alloc{};
+}
+
+void* operator new[](std::size_t sz) {
+    if(sz == 0) { ++sz; }
+    if(void *ptr = glbl_alloc.allocate(sz)) {
+        return ptr;
+    }
+    throw std::bad_alloc{};
+}
+
+void operator delete(void* ptr) noexcept {
+    glbl_alloc.deallocate(ptr);
+}
+
+void operator delete(void* ptr, std::size_t size) noexcept {
+    glbl_alloc.deallocate(ptr, size);
+}
+
+void operator delete[](void* ptr) noexcept {
+    glbl_alloc.deallocate(ptr);
+}
+
+void operator delete[](void* ptr, std::size_t size) noexcept {
+    glbl_alloc.deallocate(ptr, size);
+}
+
+#endif
+
 template<typename T, typename D = std::default_delete<T>>
 using uniqp_t = std::unique_ptr<T, D>;
 
@@ -193,7 +233,10 @@ int main(int argc, char **argv) {
                     teal_rt.get_output("friction_force").cast_to_double()), 10,
                     y_draw_pos, 20, DARKGRAY
                 );
+#ifdef USE_CUSTOM_MEMORY_ALLOCATION
                 y_draw_pos += 25;
+                DrawText(TextFormat("Mem usage: %d b", glbl_alloc.allocated()), 10, y_draw_pos, 20, DARKGRAY);
+#endif
                 EndDrawing();
             }
             CloseWindow();

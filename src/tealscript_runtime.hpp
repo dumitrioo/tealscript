@@ -12,6 +12,7 @@
 #include "inc/base64.hpp"
 #include "inc/base85.hpp"
 #include "inc/so.hpp"
+#include "inc/binned_allocator.hpp"
 #include "tealscript_util.hpp"
 #include "tealscript_token.hpp"
 #include "tealscript_lexer.hpp"
