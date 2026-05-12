@@ -115,6 +115,54 @@ Requires a C++20 compatible compiler.
 3. Load source code and register C++ extensions (functions, variables, custom types). 
 4. Execute in single- or multi-threaded mode. 
 
+
+```C++
+#include <tealscript_runtime.hpp>
+
+// This example is related to the script example shown above
+
+int main(int argc, char **argv) {
+    if(argc < 2) {
+        return 0;
+    }
+
+    teal::runtime teal_rt{};
+
+    // load script file
+    rt.load_file(argv[1]);
+    rt.loading_complete();
+    rt.run_cycle();
+    
+    ...
+    ...
+    
+    while(simulationInProgress) {
+        ...
+        ...
+        // Sensors update
+        rt.set_input("dt", dt);
+        rt.set_input("ang", angle);
+        rt.set_input("cart_pos", cart_x);
+        rt.set_input("cart_vel", cart_vel);
+
+        // Compute in the same thread (single-threaded execution)
+        rt.run_cycle();
+        
+        // Fetch controllong value from runtime
+        force = rt.get_output("motor_force").cast_to_double();
+        
+        // Apply script results
+        cartBody->applyCentralForce(btVector3(force, 0, 0));
+        ...
+        ...
+    }
+
+    return 0;
+}
+```
+
+
+
 To build the examples (on Linux): 
 ``` bash 
 mkdir build && cd build
