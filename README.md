@@ -98,12 +98,12 @@ TealScript excels at "sense → compute → act" pipelines:
 
 ## Usage & Integration
 
-Requires a C++20 compatible compiler.
+The usage of library is as simple as following:
 
-1. Include the header file: #include "tealscript_runtime.hpp" 
-2. Instantiate the TealScript runtime object. 
-3. Load source code and register C++ extensions (functions, variables, custom types). 
-4. Execute in single- or multi-threaded mode. 
+1. Include [tealscript_runtime.hpp](src/tealscript_runtime.hpp) header file
+2. Instantiate the TealScript runtime object.
+3. Load source code and register C++ extensions (functions, variables, custom types).
+4. Execute in single/multi-threaded mode.
 
 
 ```C++
