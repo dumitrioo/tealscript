@@ -93,7 +93,7 @@ namespace teal::mt {
         bool try_lock(bool w) noexcept { return w ? try_lock_for_write() : try_lock_for_read(); }
 #ifdef RW_MUTEX_UPGRADEABLE
         bool upgrade() {
-            if(current_.load() <= 0) {
+            if(current_.load(std::memory_order_acquire) <= 0) {
                 throw std::runtime_error{"locking counting error"};
             }
             std::int64_t wanted{0};
@@ -155,13 +155,13 @@ namespace teal::mt {
 #if defined(RW_MUTEX_UPGRADEABLE) || defined(RW_MUTEX_PRIORITIES)
                 if(
 #ifdef RW_MUTEX_UPGRADEABLE
-                    pending_upgraders_.load() == 0
+                    pending_upgraders_.load(std::memory_order_acquire) == 0
 #endif
 #if defined(RW_MUTEX_UPGRADEABLE) && defined(RW_MUTEX_PRIORITIES)
                     &&
 #endif
 #ifdef RW_MUTEX_PRIORITIES
-                    (prefer_writers_ == 1 || pending_readers_.load() == 0)
+                    (prefer_writers_ == 1 || pending_readers_.load(std::memory_order_acquire) == 0)
 #endif
                 ) {
 #endif
@@ -184,18 +184,18 @@ namespace teal::mt {
             pending_readers_.fetch_add(1);
             shut_on_destroy up{[this]() { pending_readers_.fetch_sub(1); }};
 #endif
-            std::int64_t curr{current_.load()};
+            std::int64_t curr{current_.load(std::memory_order_acquire)};
             while(true) {
 #if defined(RW_MUTEX_UPGRADEABLE) || defined(RW_MUTEX_PRIORITIES)
                 if(
 #ifdef RW_MUTEX_UPGRADEABLE
-                    (prefer_writers_ == 0 || pending_upgraders_.load() == 0)
+                    (prefer_writers_ == 0 || pending_upgraders_.load(std::memory_order_acquire) == 0)
 #endif
 #if defined(RW_MUTEX_UPGRADEABLE) && defined(RW_MUTEX_PRIORITIES)
                     &&
 #endif
 #ifdef RW_MUTEX_PRIORITIES
-                    (prefer_writers_ == 0 || pending_writers_.load() == 0)
+                    (prefer_writers_ == 0 || pending_writers_.load(std::memory_order_acquire) == 0)
 #endif
                 ) {
 #endif
@@ -204,7 +204,7 @@ namespace teal::mt {
                             return true;
                         }
                     } else {
-                        curr = current_.load();
+                        curr = current_.load(std::memory_order_acquire);
                     }
 #if defined(RW_MUTEX_UPGRADEABLE) || defined(RW_MUTEX_PRIORITIES)
                 }
@@ -220,10 +220,10 @@ namespace teal::mt {
             std::int64_t zero{0};
             if(
 #ifdef RW_MUTEX_UPGRADEABLE
-                pending_upgraders_.load() == 0 &&
+                pending_upgraders_.load(std::memory_order_acquire) == 0 &&
 #endif
 #ifdef RW_MUTEX_PRIORITIES
-                (prefer_writers_ == 1 || pending_readers_.load() == 0) &&
+                (prefer_writers_ == 1 || pending_readers_.load(std::memory_order_acquire) == 0) &&
 #endif
                 current_.compare_exchange_strong(zero, -1)
             ) {
@@ -233,14 +233,14 @@ namespace teal::mt {
         }
 
         bool try_lock_for_read() noexcept {
-            std::int64_t zero_or_more{current_.load()};
+            std::int64_t zero_or_more{current_.load(std::memory_order_acquire)};
             if(
                 zero_or_more >= 0
 #ifdef RW_MUTEX_UPGRADEABLE
-                && (prefer_writers_ == 1 && pending_upgraders_.load() == 0)
+                && (prefer_writers_ == 1 && pending_upgraders_.load(std::memory_order_acquire) == 0)
 #endif
 #ifdef RW_MUTEX_PRIORITIES
-                && (prefer_writers_ == 0 || pending_writers_.load() == 0)
+                && (prefer_writers_ == 0 || pending_writers_.load(std::memory_order_acquire) == 0)
 #endif
                 && current_.compare_exchange_strong(zero_or_more, zero_or_more + 1)
             ) {
@@ -250,7 +250,7 @@ namespace teal::mt {
         }
 
         void read_unlock() {
-            std::int64_t curr{current_.load()};
+            std::int64_t curr{current_.load(std::memory_order_acquire)};
             if(curr < 0) {
                 current_.store(0);
             } else if(curr > 0) {
@@ -267,11 +267,11 @@ namespace teal::mt {
         }
 
     private:
-        void maybe_wait() {
 #if RW_MUTEX_ATOMIC_SM_SLEEP_NANOS > 0
+        void maybe_wait() {
             std::this_thread::sleep_for(std::chrono::nanoseconds{RW_MUTEX_ATOMIC_SM_SLEEP_NANOS});
-#endif
         }
+#endif
 
     private:
         std::atomic<std::int64_t> current_{0};

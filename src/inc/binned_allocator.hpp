@@ -11,6 +11,11 @@ namespace teal {
         std::size_t MAX_ALLOC_SIZE = 1024
     >
     class binned_allocator {
+        static_assert((ALIGNMENT & (ALIGNMENT - 1)) == 0, "ALIGNMENT must be a power of 2");
+        static_assert((MAX_ALLOC_SIZE & (MAX_ALLOC_SIZE - 1)) == 0, "MAX_ALLOC_SIZE must be a power of 2 for this implementation");
+
+        static constexpr size_t NUM_BINS = MAX_ALLOC_SIZE / ALIGNMENT;
+
         struct alloc_unit_hdr {
             alloc_unit_hdr *next;
             size_t size;
@@ -21,16 +26,20 @@ namespace teal {
 
         struct alignas(64) free_list {
             std::atomic<alloc_unit_hdr *> head{nullptr};
-            std::mutex mtp{};
+            std::shared_mutex mtp{};
         };
 
         static size_t constexpr size_to_aligned(size_t n) {
-            return ((n / ALIGNMENT) + (n % ALIGNMENT == 0 ? 0 : 1)) * ALIGNMENT;
+            return (n + ALIGNMENT - 1) & ~(ALIGNMENT - 1);
         }
 
         static size_t constexpr allocation_header_size() {
             return ALIGNMENT < sizeof(alloc_unit_hdr) ?
                        size_to_aligned(sizeof(alloc_unit_hdr)) : ALIGNMENT;
+        }
+
+        static size_t constexpr bin_index(size_t aligned_size) {
+            return (aligned_size / ALIGNMENT) - 1;
         }
 
     public:
@@ -56,19 +65,13 @@ namespace teal {
             }
 
             alloc_unit_hdr *res_ptr{nullptr};
+            free_list &fl{free_lists_[bin_index(aligned_size)]};
             {
-                free_list &fl{free_lists_[aligned_size - 1]};
-                std::unique_lock l{fl.mtp};
-                res_ptr = fl.head.load(std::memory_order_acquire);
+                std::shared_lock l1{fl.mtp};
+                res_ptr = fl.head.load();
                 while(res_ptr != nullptr) {
                     alloc_unit_hdr *nxt{res_ptr->next};
-                    if(
-                        fl.head.compare_exchange_weak(
-                            res_ptr, nxt,
-                            std::memory_order_acquire,
-                            std::memory_order_relaxed
-                        )
-                    ) {
+                    if(fl.head.compare_exchange_weak(res_ptr, nxt)) {
                         break;
                     }
                 }
@@ -102,19 +105,15 @@ namespace teal {
                 ::free(res_ptr);
                 return true;
             }
-            free_list &fl{free_lists_[aligned_size - 1]};
-            for(
-                res_ptr->next = fl.head.load(
-                        std::memory_order_acquire
-                    )
-                ;
-                !fl.head.compare_exchange_weak(
-                        res_ptr->next, res_ptr,
-                        std::memory_order_acquire,
-                        std::memory_order_relaxed
-                    )
-                ;
-            );
+            free_list &fl{free_lists_[bin_index(aligned_size)]};
+            {
+                std::unique_lock l1{fl.mtp};
+                for(
+                    res_ptr->next = fl.head.load();
+                    !fl.head.compare_exchange_weak(res_ptr->next, res_ptr)
+                    ;
+                );
+            }
             allocated_.fetch_sub(stored_size);
             return true;
         }
@@ -131,19 +130,13 @@ namespace teal {
                 ::free(res_ptr);
                 return true;
             }
-            free_list &fl{free_lists_[stored_size - 1]};
+            free_list &fl{free_lists_[bin_index(stored_size)]};
             {
+                std::unique_lock l1{fl.mtp};
                 for(
-                    res_ptr->next = fl.head.load(
-                            std::memory_order_acquire
-                        )
+                    res_ptr->next = fl.head.load()
                     ;
-                    !fl.head.compare_exchange_weak(
-                            res_ptr->next,
-                            res_ptr,
-                            std::memory_order_acquire,
-                            std::memory_order_relaxed
-                        )
+                    !fl.head.compare_exchange_weak(res_ptr->next, res_ptr)
                     ;
                 );
             }
@@ -159,14 +152,14 @@ namespace teal {
             }
         }
 
-        uint64_t allocated() const {
+        size_t allocated() const {
             return allocated_;
         }
 
     private:
         alignas(ALIGNMENT) std::array<uint8_t, MEMORY_SIZE> buffer_{};
-        alignas(64) std::array<free_list, MAX_ALLOC_SIZE> free_lists_{};
-        std::atomic<uint64_t> allocated_{0};
+        alignas(64) std::array<free_list, NUM_BINS> free_lists_{};
+        std::atomic<size_t> allocated_{0};
         std::atomic<size_t> offset_{0};
         std::mutex mtp_{};
     };
