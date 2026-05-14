@@ -153,6 +153,129 @@ int main(int argc, char **argv) {
 }
 ```
 
+## Another Example
+
+How would you implement a given logic circuit in a regular programming language?
+
+[Logic cirquit for 74181](examples/alu74181.png)
+
+I won’t bother you with waiting and will immediately provide the implementation in TealScript.
+
+```TealScript
+// logical gates -------------------------------------------
+not(a) { return !a; }
+fwd(a) { return (bool)a; }
+and2(a, b) { return a && b; }
+and3(a, b, c) { return a && b && c; }
+and4(a, b, c, d) { return a && b && c && d; }
+and5(a, b, c, d, e) { return a && b && c && d && e; }
+nand2(a, b) { return !(a && b); }
+nand3(a, b, c) { return !(a && b && c); }
+nand4(a, b, c, d) { return !(a && b && c && d); }
+nand5(a, b, c, d, e) { return !(a && b && c && d && e); }
+or2(a, b) { return a || b; }
+or3(a, b, c) { return a || b || c; }
+or4(a, b, c, d) { return a || b || c || d; }
+nor2(a, b) { return !(a || b); }
+nor3(a, b, c) { return !(a || b || c); }
+nor4(a, b, c, d) { return !(a || b || c || d); }
+xor2(a, b) { return a ^ b; }
+xor3(a, b, c) { return a ^ b ^ c; }
+xor4(a, b, c, d) { return a ^ b ^ c ^ d; }
+xnor2(a, b) { return !(a ^ b); }
+xnor3(a, b, c) { return !(a ^ b ^ c); }
+xnor4(a, b, c, d) { return !(a ^ b ^ c ^ d); }
+i2or2(a, b) { return !a || !b; }
+forward(v) return v;
+
+// ---------------------------------------------------------
+// The Graph
+// ---------------------------------------------------------
+
+// inputs --------------------------------------------------
+'A0' a0;
+'A1' a1;
+'A2' a2;
+'A3' a3;
+'B0' b0;
+'B1' b1;
+'B2' b2;
+'B3' b3;
+'S0' s0;
+'S1' s1;
+'S2' s2;
+'S3' s3;
+'C_in' c_in;
+'M' m;
+
+///////////////////////// workers
+not   alu_0(b3);
+not   alu_1(b2);
+not   alu_2(b1);
+not   alu_3(b0);
+not   alu_4(m);
+and3  alu_5(b3, s3, a3);
+and3  alu_6(a3, s2, alu_0);
+and2  alu_7(alu_0, s1);
+and2  alu_8(s0, b3);
+fwd   alu_9(a3);
+and3  alu_10(b2, s3, a2);
+and3  alu_11(a2, s2, alu_1);
+and2  alu_12(alu_1, s1);
+and2  alu_13(s0, b2);
+fwd   alu_14(a2);
+and3  alu_15(b1, s3, a1);
+and3  alu_16(a1, s2, alu_2);
+and2  alu_17(alu_2, s1);
+and2  alu_18(s0, b1);
+fwd   alu_19(a1);
+and3  alu_20(b0, s3, a0);
+and3  alu_21(a0, s2, alu_3);
+and2  alu_22(alu_3, s1);
+and2  alu_23(s0, b0);
+fwd   alu_24(a0);
+nor2  alu_25(alu_5, alu_6);
+nor3  alu_26(alu_7, alu_8, alu_9);
+nor2  alu_27(alu_10, alu_11);
+nor3  alu_28(alu_12, alu_13, alu_14);
+nor2  alu_29(alu_15, alu_16);
+nor3  alu_30(alu_17, alu_18, alu_19);
+nor2  alu_31(alu_20, alu_21);
+nor3  alu_32(alu_22, alu_23, alu_24);
+xor2  alu_33(alu_25, alu_26);
+xor2  alu_34(alu_27, alu_28);
+xor2  alu_35(alu_29, alu_30);
+xor2  alu_36(alu_31, alu_32);
+fwd   alu_37(alu_26);
+and2  alu_38(alu_25, alu_28);
+and3  alu_39(alu_25, alu_27, alu_30);
+and4  alu_40(alu_25, alu_27, alu_29, alu_32);
+nand5 alu_41(alu_25, alu_27, alu_32, alu_31, c_in);
+nand4 alu_42(alu_25, alu_27, alu_32, alu_31)          'P';
+and5  alu_43(c_in, alu_31, alu_32, alu_27, alu_4);
+and4  alu_44(alu_32, alu_27, alu_32, alu_4);
+and3  alu_45(alu_27, alu_30, alu_4);
+and2  alu_46(alu_28, alu_4);
+and4  alu_47(c_in, alu_31, alu_29, alu_4);
+and3  alu_48(alu_29, alu_32, alu_4);
+and2  alu_49(alu_30, alu_4);
+and3  alu_50(c_in, alu_31, alu_4);
+and2  alu_51(alu_32, alu_4);
+nand2 alu_52(c_in, alu_4);
+nor4  alu_53(alu_37, alu_38, alu_39, alu_40)          'G';
+nor4  alu_54(alu_43, alu_44, alu_45, alu_46);
+nor3  alu_55(alu_47, alu_48, alu_49);
+nor2  alu_56(alu_50, alu_51);
+i2or2 alu_57(alu_53, alu_41)                          'C_out';
+xor2  alu_58(alu_33, alu_54)                          'f3';
+xor2  alu_59(alu_34, alu_55)                          'f2';
+xor2  alu_60(alu_35, alu_56)                          'f1';
+xor2  alu_61(alu_36, alu_52)                          'f0';
+and4  alu_62(alu_58, alu_59, alu_60, alu_61)          'EQ';
+```
+As you can see, the graph is composed of computation node instances whose implementations described above that graph. And the program itself turned out to be short, understandable and covering the logical circuit one to one.
+
+
 To build the examples (on Linux): 
 ``` bash 
 mkdir build && cd build
