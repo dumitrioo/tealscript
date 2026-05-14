@@ -17,8 +17,9 @@ namespace teal {
     public:
         virtual ~cell_base() {}
         virtual void exec(execution_context *) {}
-        virtual void set_value(valbox const &val) { std::unique_lock l{val_mtp_}; val_ = val; }
+        virtual void set_value(valbox const &val) { std::unique_lock l{val_mtp_}; val_ = val.clone(); }
         virtual valbox value() const { std::shared_lock l{val_mtp_}; return val_; }
+        virtual valbox value_clone() const { std::shared_lock l{val_mtp_}; return val_.clone(); }
         virtual void set_inst_name(std::string const &name) { inst_name_ = name; }
         virtual std::string const &inst_name() const & { return inst_name_; }
         virtual void set_loc(std::int64_t l, std::int64_t c) { line_ = l; col_ = c; }

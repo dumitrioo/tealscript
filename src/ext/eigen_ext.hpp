@@ -221,11 +221,30 @@ namespace teal {
                 }
             );
 
+            rt->add_object_binary_operation("matrix", "==",
+                [](valbox &l, valbox &r) -> valbox {
+                    if(l.class_name() == "matrix" && r.class_name() == "matrix") {
+                        return l.as_class<Eigen::MatrixXd>() == r.as_class<Eigen::MatrixXd>();
+                    } else {
+                        if(l.class_name() == "matrix") {
+                            if(auto ortsw{detail::mb_construct_from(r)}) {
+                                return l.as_class<Eigen::MatrixXd>() == *ortsw;
+                            }
+                        } else if(r.class_name() == "matrix") {
+                            if(auto oltsw{detail::mb_construct_from(l)}) {
+                                return *oltsw == r.as_class<Eigen::MatrixXd>();
+                            }
+                        }
+                    }
+                    return false;
+                }
+            );
+
             rt->add_object_serializer("matrix",
                 [](valbox const &v) -> std::optional<std::string> {
                     if(v.is_class_ref() && v.class_name() == "matrix") {
                         serializer ser{};
-                        ser << "martix" << v.as_class<Eigen::MatrixXd>().rows() << v.as_class<Eigen::MatrixXd>().cols();
+                        ser << "matrix" << v.as_class<Eigen::MatrixXd>().rows() << v.as_class<Eigen::MatrixXd>().cols();
                         for(int r{}; r < v.as_class<Eigen::MatrixXd>().rows(); ++r) {
                             for(int c{}; c < v.as_class<Eigen::MatrixXd>().cols(); ++c) {
                                 ser << v.as_class<Eigen::MatrixXd>()(r, c);
@@ -244,13 +263,13 @@ namespace teal {
                         serial_reader sr{vd.data(), vd.size()};
                         auto it{sr.begin()};
                         if(it->as_string() == "matrix") {
-                            int numr{(int)(it++)->as_number()};
-                            int numc{(int)(it++)->as_number()};
+                            int numr{(int)(++it)->as_number()};
+                            int numc{(int)(++it)->as_number()};
                             Eigen::MatrixXd res;
                             res.resize(numr, numc);
                             for(int r{}; r < numr; ++r) {
                                 for(int c{}; c < numc; ++c) {
-                                    res(r, c) = (it++)->as_fpnum<double>();
+                                    res(r, c) = (++it)->as_fpnum<double>();
                                 }
                             }
                             return teal::valbox{res, "matrix"};

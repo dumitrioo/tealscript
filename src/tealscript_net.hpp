@@ -365,13 +365,24 @@ namespace teal {
             on_data_arrived_ = std::move(fun);
         }
 
+        long double last_data_arrived_time() const {
+            return last_data_arrived_time_;
+        }
+
+        long double seconds_with_no_data_arrivals() const {
+            return steady_time_sec() - last_data_arrived_time_;
+        }
+
         void start(std::string host, std::uint16_t port) {
             stop_ = false;
             host_ = host;
             port_ = port;
             std::unique_lock lck{ucm_mtp_};
             ucm_ = std::make_unique<teal::net::udp_client_muxed<1400>>(cq_);
-            ucm_->set_on_data_arrived([this](bytevec const &bv) { notify_on_data_arrived(bv); });
+            ucm_->set_on_data_arrived([this](bytevec const &bv) {
+                last_data_arrived_time_ = steady_time_sec();
+                notify_on_data_arrived(bv);
+            });
             if(!ucm_->connect(host, port)) {
                 ucm_->set_on_data_arrived(nullptr);
             }
@@ -438,6 +449,7 @@ namespace teal {
         }
 
     private:
+        long double last_data_arrived_time_{};
         command_queue *cq_{nullptr};
         mutable std::shared_mutex ucm_mtp_{};
         std::unique_ptr<teal::net::udp_client_muxed<1400>> ucm_{};

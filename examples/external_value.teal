@@ -1,7 +1,8 @@
 setup_cell() {
     if(!this.set_up) {
+        enable_values_network_exposing("0.0.0.0", 43987);
         set_extern_update_seconds(0.001);
-        set_cycle_sleep_seconds(0.0005);
+        set_cycle_sleep_seconds(0.001);
         set_inactive_sleep_seconds(0.01);
         this.set_up = true;
     }
@@ -21,29 +22,20 @@ function rnd_str(n) {
 some_value_issuer() {
     if(steady_clock() > this.last_time + 0.1) {
         this.last_time = steady_clock();
-
-        choice = rand() % 8;
+        choice = rand() % 9;
         if(choice == 0) this.res = rnd_str(rand() % 32 + 1);
-
         if(choice == 1) this.res = rand() % 100 + 1;
-
         if(choice == 2) this.res = vec4(200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5));
-
         if(choice == 3) this.res = mat4(
             200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5),
             200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5),
             200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5),
             200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5)
         );
-
         if(choice == 4) this.res = [200.0 * (randf() - 0.5), rnd_str(12)];
-
         if(choice == 5) { o = object(); o["key"] = 200.0 * (randf() - 0.5); this.res = o; }
-
         if(choice == 6) this.res = sin;
-
         if(choice == 7) this.res = timestamp();
-
         if(choice == 8) this.res = matrix(
                                        2, 2, 
                                        [
@@ -51,7 +43,6 @@ some_value_issuer() {
                                         3,4
                                        ]
                                    );
-
         console.print("original value changed to: ", this.res);
     }
     return this.res;

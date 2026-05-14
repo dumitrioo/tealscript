@@ -353,46 +353,36 @@ namespace teal {
 
             std::string as_string() const {
                 std::uint64_t s{size()};
-                if(s >= sizeof(char)) {
-                    return std::string{reinterpret_cast<char const *>(data()), static_cast<std::size_t>(s)};
-                } else {
-                    throw bad_serial_cast{"Invalid content for being a string"};
-                }
+                char const *d{reinterpret_cast<char const *>(data())};
+                std::string res{d, d + s};
+                return res;
             }
 
 #if (__cplusplus >= 201700L)
             std::string_view as_string_view() const {
                 std::uint64_t s{size()};
-                if(s) {
-                    return std::string_view{reinterpret_cast<char const *>(data()), static_cast<std::size_t>(s)};
-                } else {
-                    return {};
-                }
+                return std::string_view{reinterpret_cast<char const *>(data()),
+                                        static_cast<std::size_t>(s)};
             }
 #endif
 
             std::wstring as_wstring() const {
                 std::uint64_t s{size()};
-                if(s >= sizeof(std::wstring::value_type)) {
-                    if(s % sizeof(std::wstring::value_type)) {
-                        throw bad_serial_cast{"Invalid content for being a unicode string"};
-                    }
-                    return std::wstring{reinterpret_cast<std::wstring::value_type const *>(data()), static_cast<std::size_t>(s / sizeof(std::wstring::value_type))};
-                } else {
-                    return {};
+                if(s % sizeof(std::wstring::value_type)) {
+                    throw bad_serial_cast{"Invalid content for being a unicode string"};
                 }
+                return std::wstring{reinterpret_cast<std::wstring::value_type const *>(data()),
+                                    reinterpret_cast<std::wstring::value_type const *>(data()) +
+                                        static_cast<std::size_t>(s / sizeof(std::wstring::value_type))};
             }
 
             std::wstring_view as_wstring_view() const {
                 std::uint64_t s{size()};
-                if(s >= sizeof(std::wstring_view::value_type)) {
-                    if(s % sizeof(std::wstring_view::value_type)) {
-                        throw bad_serial_cast{"Invalid content for being a unicode string"};
-                    }
-                    return std::wstring_view{reinterpret_cast<std::wstring_view::value_type const *>(data()), static_cast<std::size_t>(s / sizeof(std::wstring_view::value_type))};
-                } else {
-                    return {};
+                if(s % sizeof(std::wstring_view::value_type)) {
+                    throw bad_serial_cast{"Invalid content for being a unicode string"};
                 }
+                return std::wstring_view{reinterpret_cast<std::wstring_view::value_type const *>(data()),
+                                         static_cast<std::size_t>(s / sizeof(std::wstring_view::value_type))};
             }
 
             teal::bytevec as_bytevec() const {

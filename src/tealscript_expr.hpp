@@ -935,37 +935,45 @@ namespace teal {
                     valbox res{valbox_no_initialize::dont_do_it};
                     auto l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     auto r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int() == 0;
-                                res_found = true;
-                            }
-                        }
+                    auto lt{l.val_or_pointed_type()};
+                    auto rt{r.val_or_pointed_type()};
+                    if(
+                        (lt == valbox::type::UNDEFINED && rt != valbox::type::UNDEFINED) ||
+                        (rt == valbox::type::UNDEFINED && lt != valbox::type::UNDEFINED)
+                    ) {
+                        return false;
                     }
-                    if(!res_found) {
-                        bool excepted{false};
-                        runtime_error er{{}, {}, {}};
-                        try {
+                    bool excepted{false};
+                    runtime_error er{{}, {}, {}};
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
+                        }
+                        if(binops != nullptr) {
+                            auto it{binops->find("==")};
+                            if(it != binops->end()) {
+                                res = it->second(l, r);
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
+                            }
+                        } else {
                             res = l == r;
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 },
@@ -977,36 +985,45 @@ namespace teal {
                     shut_on_destroy sod{[&]() { ctx->set_create_if_not_exists(old); }};
                     auto l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     auto r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int() != 0;
-                                res_found = true;
-                            }
-                        }
+                    auto lt{l.val_or_pointed_type()};
+                    auto rt{r.val_or_pointed_type()};
+                    if(
+                        (lt == valbox::type::UNDEFINED && rt != valbox::type::UNDEFINED) ||
+                        (rt == valbox::type::UNDEFINED && lt != valbox::type::UNDEFINED)
+                        ) {
+                        return true;
                     }
-                    if(!res_found) {
-                        bool excepted{false};
-                        runtime_error er{{}, {}, {}};
-                        try {
+                    bool excepted{false};
+                    runtime_error er{{}, {}, {}};
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
+                        }
+                        if(binops != nullptr) {
+                            auto it{binops->find("==")};
+                            if(it != binops->end()) {
+                                res = !it->second(l, r).cast_to_bool();
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
+                            }
+                        } else {
                             res = l != r;
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 },
@@ -1019,34 +1036,35 @@ namespace teal {
                     runtime_error er{{}, {}, {}};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int() <= 0;
-                                res_found = true;
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
+                        }
+                        if(binops != nullptr) {
+                            auto it{binops->find("<=>")};
+                            if(it != binops->end()) {
+                                res = it->second(l, r).cast_to_int() <= 0;
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
                             }
-                        }
-                    }
-                    if(!res_found) {
-                        try {
+                        } else {
                             res = l <= r;
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 },
@@ -1059,34 +1077,35 @@ namespace teal {
                     runtime_error er{{}, {}, {}};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int() < 0;
-                                res_found = true;
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
+                        }
+                        if(binops != nullptr) {
+                            auto it{binops->find("<=>")};
+                            if(it != binops->end()) {
+                                res = it->second(l, r).cast_to_int() < 0;
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
                             }
-                        }
-                    }
-                    if(!res_found) {
-                        try {
+                        } else {
                             res = l < r;
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 },
@@ -1099,34 +1118,35 @@ namespace teal {
                     runtime_error er{{}, {}, {}};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int() > 0;
-                                res_found = true;
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
+                        }
+                        if(binops != nullptr) {
+                            auto it{binops->find("<=>")};
+                            if(it != binops->end()) {
+                                res = it->second(l, r).cast_to_int() > 0;
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
                             }
-                        }
-                    }
-                    if(!res_found) {
-                        try {
+                        } else {
                             res = r < l;
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 },
@@ -1139,34 +1159,35 @@ namespace teal {
                     runtime_error er{{}, {}, {}};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int() >= 0;
-                                res_found = true;
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
+                        }
+                        if(binops != nullptr) {
+                            auto it{binops->find("<=>")};
+                            if(it != binops->end()) {
+                                res = it->second(l, r).cast_to_int() >= 0;
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
                             }
-                        }
-                    }
-                    if(!res_found) {
-                        try {
+                        } else {
                             res = !(l < r);
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 },
@@ -1179,38 +1200,39 @@ namespace teal {
                     runtime_error er{{}, {}, {}};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                     valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
-                    bool res_found{false};
-                    if(l.is_class_ref() || r.is_class_ref()) {
-                        std::string cname{l.is_class_ref() ? l.class_name() : r.class_name()};
-                        auto cmpfn{ctx->rt_interface()->get_object_services(cname)->comparator};
-                        if(cmpfn) {
-                            valbox cmp_res{cmpfn(l, r)};
-                            if(!cmp_res.is_undefined_ref()) {
-                                res = cmp_res.cast_to_int();
-                                res_found = true;
-                            }
+                    try {
+                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
+                        if(l.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
+                        } else if(r.is_class_ref()) {
+                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
                         }
-                    }
-                    if(!res_found) {
-                        try {
+                        if(binops != nullptr) {
+                            auto it{binops->find("<=>")};
+                            if(it != binops->end()) {
+                                res = it->second(l, r);
+                            } else {
+                                throw runtime_error{this_->line(), this_->col(), "unsupported operation"};
+                            }
+                        } else {
 #if (__cplusplus >= 202000L)
                             res = l <=> r;
 #else
                             res = valbox::operator_spaceship(l,  r);
 #endif
-                        } catch (runtime_error const &e) {
-                            er = e;
-                            excepted = true;
-                        } catch (std::exception const &e) {
-                            er = runtime_error(this_->line_, this_->col_, e.what());
-                            excepted = true;
-                        } catch (...) {
-                            er = runtime_error(this_->line_, this_->col_, "unknown error");
-                            excepted = true;
                         }
-                        if(excepted) {
-                            throw er;
-                        }
+                    } catch (runtime_error const &e) {
+                        er = e;
+                        excepted = true;
+                    } catch (std::exception const &e) {
+                        er = runtime_error(this_->line_, this_->col_, e.what());
+                        excepted = true;
+                    } catch (...) {
+                        er = runtime_error(this_->line_, this_->col_, "unknown error");
+                        excepted = true;
+                    }
+                    if(excepted) {
+                        throw er;
                     }
                     return res;
                 }
@@ -1229,22 +1251,7 @@ namespace teal {
                     if(l.is_ptr()) {
                         l.assign_preserving_type(r);
                     } else {
-                        str_map_t<std::function<valbox(valbox &, valbox &)>> const *binops{nullptr};
-                        if(l.is_class_ref()) {
-                            binops = &(ctx->rt_interface()->get_object_services(l.class_name())->binops);
-                        } else if(r.is_class_ref()) {
-                            binops = &(ctx->rt_interface()->get_object_services(r.class_name())->binops);
-                        }
-                        if(binops != nullptr) {
-                            auto it{binops->find("=")};
-                            if(it != binops->end()) {
-                                it->second(l, r);
-                            } else {
-                                l.assign(r);
-                            }
-                        } else {
-                            l.assign(r);
-                        }
+                        l.assign(r);
                     }
                     return l;
                 },

@@ -1126,6 +1126,22 @@ namespace teal {
                 return ts > 0 ? ts : 1;
             });
 
+            add_function("enable_values_network_exposing", TEALFUN(args) {
+                TEAL_CHCK_FUN_PARMS_NUM_IN_RANGE(args, 0, 3);
+                std::string bind_addr{"0.0.0.0"};
+                std::uint16_t port{43987};
+                long double stale_connections_removal_timeout{0};
+                if(args.size() > 0) { bind_addr = args[0].cast_to_string(); }
+                if(args.size() > 1) { port = args[1].cast_to_u16(); }
+                if(args.size() > 2) { port = args[2].cast_to_long_double(); }
+                start_net_server(teal::net::address_family::inet4, bind_addr, port, stale_connections_removal_timeout);
+                return net_server_running();
+            });
+
+            add_function("disable_values_network_exposing", TEALFUN(args) {
+                stop_net_server();
+                return !net_server_running();
+            });
 
             add_function("extern_update_nanointerval", TEALFUN(args) {
 #ifdef TEAL_USE_EXTERNAL_VALUES
@@ -1341,13 +1357,6 @@ namespace teal {
             obj_svc_[class_name].deserializer = fun;
         }
 
-        virtual void add_object_comparator(
-            std::string const &class_name,
-            std::function<valbox(valbox const &, valbox const &)> const &fun
-        ) override {
-            std::unique_lock l{obj_ser_mtp_};
-            obj_svc_[class_name].comparator = fun;
-        }
         virtual void add_object_stringifier(
             std::string const &class_name,
             std::function<valbox(valbox const &)> const &fun
@@ -1375,7 +1384,6 @@ namespace teal {
         obj_services def_obj_svc_{
             [](valbox const &) -> std::optional<std::string> { return std::optional<std::string>{}; },
             [](std::string const &, std::string const &) -> valbox { return {}; },
-            [](valbox const &, valbox const &) -> valbox { return {}; },
             [](valbox const &) -> valbox { return std::string{}; }
         };
         obj_services const *get_object_services(std::string const &class_name) const override {
@@ -1859,16 +1867,20 @@ namespace teal {
             long double stale_connections_removal_timeout
         ) override {
             {
-                std::shared_lock l{ppserver_mtp_};
+                std::shared_lock l1{ppserver_mtp_};
+                std::unique_lock l2{cq_mtp_};
                 if(!cq_) {
                     cq_ = std::make_unique<command_queue>(std::thread::hardware_concurrency());
                     cq_->set_workload_to_start_spawn_threads(0.9);
                     cq_->set_workload_to_start_kill_threads(0.1);
                     cq_->set_min_seconds_between_killings(1);
-                    cq_->enqueue_urgent(pp_subs_functor_);
                 }
             }
             std::shared_lock l{ppserver_mtp_};
+            pp_subs_functor_terminate_ = false;
+            if(!pp_subs_functor_running()) {
+                cq_->enqueue_urgent(pp_subs_functor_);
+            }
             if(!ppserver_) {
                 l.unlock();
                 std::unique_lock l1{ppserver_mtp_};
@@ -1894,15 +1906,9 @@ namespace teal {
         }
 
         void stop_net_server() override {
-            {
-                std::unique_lock l{ppserver_mtp_};
-                ppserver_.reset();
-            }
-            std::unique_lock l{cq_mtp_};
-#ifdef TEAL_USE_EXTERNAL_VALUES
-            std::shared_lock l2{ext_cells_processor_mtp_};
-#endif
-            cq_.reset();
+            std::unique_lock l{ppserver_mtp_};
+            pp_subs_functor_terminate_ = true;
+            ppserver_.reset();
         }
 
         bool net_server_running() const override {
@@ -2172,7 +2178,7 @@ namespace teal {
         std::shared_ptr<pp_client_udp> get_connected_client(extern_cell const *ecp) {
             std::unique_lock l{pp_clients_mtp_};
             std::shared_ptr<pp_client_udp> res{pp_clients_[ecp->remote_host()][*ecp->remote_url().port()]};
-            if(!res || !res->connected()) {
+            if(!res || !res->connected() || res->seconds_with_no_data_arrivals() > 10) {
                 res = std::make_shared<pp_client_udp>(cq_.get());
                 res->set_on_data_arrived([this](bytevec const &rsp) {
                     try {
@@ -2200,7 +2206,7 @@ namespace teal {
         }
 
         bool extcell_processing_started() const {
-            return ext_cells_processor_started_.load(std::memory_order_acquire);
+            return ext_cells_processor_started_.load(std::memory_order_relaxed);
         }
 
         void start_extcell_processing() {
@@ -2265,8 +2271,8 @@ namespace teal {
                 pp_clients_.clear();
             }
             {
-                std::unique_lock l1{cq_mtp_};
                 std::shared_lock l{ppserver_mtp_};
+                std::unique_lock l1{cq_mtp_};
                 if(!ppserver_) {
                     cq_.reset();
                 }
@@ -2304,26 +2310,40 @@ namespace teal {
             std::map<std::string, name_attrs> names_{};
         };
 
-        std::shared_mutex net_subs_mtp_{};
+        mutable std::shared_mutex net_subs_mtp_{};
+        std::atomic_bool pp_subs_functor_running_{false};
+        std::atomic_bool pp_subs_functor_terminate_{false};
         std::map<conn_id_t, net_value_subscriber> net_subs_{};
         uint64_t ext_cells_refresh_interval_nanos_{1000000ULL};
 
         void pp_subscribe(conn_id_t conn_id, std::string const &name, std::string const &alias) {
             std::unique_lock l{net_subs_mtp_};
-            net_subs_[conn_id].subscribe(name, alias);
+            if(!pp_subs_functor_terminate_) {
+                net_subs_[conn_id].subscribe(name, alias);
+            }
         }
         void pp_unsubscribe(conn_id_t conn_id, std::string const &name) {
             std::unique_lock l{net_subs_mtp_};
-            net_subs_[conn_id].unsubscribe(name);
+            if(!pp_subs_functor_terminate_) {
+                net_subs_[conn_id].unsubscribe(name);
+            }
         }
         void pp_remove(conn_id_t conn_id) {
             std::unique_lock l{net_subs_mtp_};
-            net_subs_.erase(conn_id);
+            if(!pp_subs_functor_terminate_) {
+                net_subs_.erase(conn_id);
+            }
+        }
+
+        bool pp_subs_functor_running() const {
+            std::shared_lock l{net_subs_mtp_};
+            return pp_subs_functor_running_;
         }
 
         std::function<void()> pp_subs_functor_{[this]() {
             {
                 std::unique_lock l{net_subs_mtp_};
+                pp_subs_functor_running_ = true;
                 for(auto it{net_subs_.begin()}; it != net_subs_.end(); ) {
                     if(it->second.seconds_that_side_inactive() > 10) {
                         it = net_subs_.erase(it);
@@ -2331,49 +2351,51 @@ namespace teal {
                     }
                     auto name_pairs{it->second.names()};
                     for(auto &&np: name_pairs) {
-                        json resp{};
-                        cell_base *cellptr{nullptr};
-                        auto const &nme{np.first};
-                        auto &v{np.second};
-                        resp["act"] = "pub";
-                        resp["name"] = v.alias;
-                        std::vector<std::uint8_t> last_value{v.val};
-                        do {
-                            {
-                                auto it{input_cells_.find(nme)};
-                                if(it != input_cells_.end()) { cellptr = it->second.get(); break; }
-                            }
-                            {
-                                auto it{worker_cells_.find(nme)};
-                                if(it != worker_cells_.end()) { cellptr = it->second.get(); break; }
-                            }
+                        try {
+                            json resp{};
+                            cell_base *cellptr{nullptr};
+                            auto const &nme{np.first};
+                            auto &v{np.second};
+                            resp["act"] = "pub";
+                            resp["name"] = v.alias;
+                            std::vector<std::uint8_t> last_value{v.val};
+                            do {
+                                {
+                                    auto it{input_cells_.find(nme)};
+                                    if(it != input_cells_.end()) { cellptr = it->second.get(); break; }
+                                }
+                                {
+                                    auto it{worker_cells_.find(nme)};
+                                    if(it != worker_cells_.end()) { cellptr = it->second.get(); break; }
+                                }
 #ifdef TEAL_USE_EXTERNAL_VALUES
-                            {
-                                auto it{extern_cells_.find(nme)};
-                                if(it != extern_cells_.end()) { cellptr = it->second.get(); break; }
-                            }
+                                {
+                                    auto it{extern_cells_.find(nme)};
+                                    if(it != extern_cells_.end()) { cellptr = it->second.get(); break; }
+                                }
 #endif
-                        } while(false);
-                        bool need_send{false};
-                        if(cellptr != nullptr) {
-                            valbox vb{cellptr->value().deref().clone()};
-                            json vbsr{vb.serialize(this)};
-                            std::vector<std::uint8_t> bs{vbsr.bserialize()};
-                            if(last_value != bs) {
-                                need_send = true;
-                                it->second.actualize_send_val(nme, bs);
-                                it->second.actualize_send_time(nme, steady_time_sec());
-                                resp["result"] = std::move(vbsr);
+                            } while(false);
+                            bool need_send{false};
+                            if(cellptr != nullptr) {
+                                json vbsr{cellptr->value_clone().serialize(this)};
+                                std::vector<std::uint8_t> bs{vbsr.bserialize()};
+                                if(last_value != bs) {
+                                    need_send = true;
+                                    it->second.actualize_send_val(nme, bs);
+                                    it->second.actualize_send_time(nme, steady_time_sec());
+                                    resp["result"] = std::move(vbsr);
+                                }
+                            } else {
+                                if(steady_time_sec() > v.last_sent_timestamp_ + 3) {
+                                    need_send = true;
+                                    it->second.actualize_send_time(nme, steady_time_sec());
+                                    resp["result"] = valbox{}.serialize(this);
+                                }
                             }
-                        } else {
-                            if(steady_time_sec() > v.last_sent_timestamp_ + 3) {
-                                need_send = true;
-                                it->second.actualize_send_time(nme, steady_time_sec());
-                                resp["result"] = valbox{}.serialize(this);
+                            if(need_send) {
+                                ppserver_->send(it->first, resp.bserialize());
                             }
-                        }
-                        if(need_send) {
-                            ppserver_->send(it->first, resp.bserialize());
+                        } catch (...) {
                         }
                     }
                     ++it;
@@ -2382,8 +2404,12 @@ namespace teal {
             if(ext_cells_refresh_interval_nanos_ > 0) {
                 std::this_thread::sleep_for(std::chrono::nanoseconds{ext_cells_refresh_interval_nanos_});
             }
-            if(!termination_requested()) {
+            if(!termination_requested() && !pp_subs_functor_terminate_) {
                 cq_->enqueue_urgent(pp_subs_functor_);
+            } else {
+                std::unique_lock l{net_subs_mtp_};
+                net_subs_.clear();
+                pp_subs_functor_running_ = false;
             }
         }};
     };

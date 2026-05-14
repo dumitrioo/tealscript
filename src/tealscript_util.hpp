@@ -102,7 +102,7 @@ namespace teal {
     template<typename K_T, typename V_T>
     using num_map_t = emhash_8::HashMap<K_T, V_T, num_cast_hash<K_T>>;
     template<typename V_T>
-    using str_map_t = emhash_8::HashMap<std::string, V_T, str_crc<std::string>>;
+    using str_map_t = emhash_8::HashMap<std::string, V_T/*, str_crc<std::string>*/>;
     #else
     template<typename K_T, typename V_T>
     using num_map_t = std::unordered_map<K_T, V_T>;

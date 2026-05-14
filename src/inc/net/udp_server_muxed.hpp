@@ -26,7 +26,7 @@ namespace teal::net {
         udp_server_muxed(
             command_queue *cq,
             address_family af = address_family::inet4,
-            long double stale_connections_removal_timeout = 0.0L
+            long double stale_connections_removal_timeout = 10.0L
         ):
             cq_{cq},
             stale_connections_removal_timeout_{stale_connections_removal_timeout},
@@ -677,7 +677,7 @@ namespace teal::net {
             }
         };
 
-        long double stale_connections_removal_timeout_{0};
+        long double stale_connections_removal_timeout_{10.0L};
 
         sockaddr_any serv_addr_;
         atomic_sequence_generator<std::uint64_t> conn_id_gen_{1};

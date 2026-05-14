@@ -1,0 +1,45 @@
+setup_cell() {
+    if(!this.set_up) {
+        enable_values_network_exposing("0.0.0.0", 43987);
+        set_extern_update_seconds(0.001);
+        set_cycle_sleep_seconds(0.001);
+        set_inactive_sleep_seconds(0.01);
+        this.set_up = true;
+    }
+    return 0;
+}
+setup_cell setup();
+
+function rnd_str(n) {
+    res = "";
+    for (i = 0; i < n; ++i) {
+        res += "0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"[rand() % 62];
+    }
+    return res;
+}
+
+some_value_issuer() {
+    if(steady_clock() > this.last_time + 0.1) {
+        choice = rand() % 9;
+        console.print("choice = ", choice);
+        if(choice == 0) this.res = rnd_str(rand() % 32 + 1);
+        if(choice == 1) this.res = rand() % 100 + 1;
+        if(choice == 2) this.res = vec4(200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5));
+        if(choice == 3) this.res = mat4(
+            200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5),
+            200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5),
+            200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5),
+            200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5), 200.0 * (randf() - 0.5)
+        );
+        if(choice == 4) this.res = [200.0 * (randf() - 0.5), rnd_str(12)];
+        if(choice == 5) { o = object(); o["key"] = 200.0 * (randf() - 0.5); this.res = o; }
+        if(choice == 6) this.res = sin;
+        if(choice == 7) this.res = timestamp();
+        if(choice == 8) this.res = matrix(2, 2, [1,2,3,4]);
+        console.print("original value changed to: ", this.res);
+        this.last_time = steady_clock();
+    }
+    return this.res;
+}
+
+some_value_issuer just_a_regular_cell();

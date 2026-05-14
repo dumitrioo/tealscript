@@ -59,8 +59,45 @@ namespace teal {
                 }
             );
 
-            rt->add_object_comparator("timestamp",
-                [](valbox const &l, valbox const &r) -> valbox {
+            rt->add_object_stringifier("timestamp",
+                [](valbox const &v) -> valbox {
+                    if(v.class_name() == "timestamp") {
+                        return v.as_class<timespec_wrapper>().as_iso_8601_str();
+                    }
+                    return std::string{};
+                }
+            );
+
+            rt->add_object_binary_operation("timestamp", "==",
+                [](valbox &l, valbox &r) -> valbox {
+                    static const auto mb_constr{[](valbox const &vb) -> std::optional<timespec_wrapper> {
+                        if(vb.is_any_int_number()) { return timespec_wrapper{vb.cast_to_s64()};
+                        } else if(vb.is_any_fp_number()) { return timespec_wrapper{vb.cast_to_long_double()};
+                        } else if(vb.is_string_ref()) { return timespec_wrapper{vb.as_string()};
+                        } else if(vb.is_wstring_ref()) { return timespec_wrapper{vb.cast_to_string()};
+                        } else if(vb.is_undefined()) { return timespec_wrapper{};
+                        }
+                        return {};
+                    }};
+                    if(l.class_name() == "timestamp" && r.class_name() == "timestamp") {
+                        return l.as_class<timespec_wrapper>() == r.as_class<timespec_wrapper>();
+                    } else {
+                        if(l.class_name() == "timestamp") {
+                            if(auto ortsw{mb_constr(r)}) {
+                                return l.as_class<timespec_wrapper>() == *ortsw;
+                            }
+                        } else if(r.class_name() == "timestamp") {
+                            if(auto oltsw{mb_constr(l)}) {
+                                return *oltsw == r.as_class<timespec_wrapper>();
+                            }
+                        }
+                    }
+                    return false;
+                }
+            );
+
+            rt->add_object_binary_operation("timestamp", "<=>",
+                [](valbox &l, valbox &r) -> valbox {
                     static const auto mb_constr{[](valbox const &vb) -> std::optional<timespec_wrapper> {
                         if(vb.is_any_int_number()) { return timespec_wrapper{vb.cast_to_s64()};
                         } else if(vb.is_any_fp_number()) { return timespec_wrapper{vb.cast_to_long_double()};
@@ -71,7 +108,7 @@ namespace teal {
                         return {};
                     }};
                     static const auto cmp{[](timespec_wrapper const &l, timespec_wrapper const &r) -> int {
-                        return l < r ? -1: (r < l ? 1: 0);
+                        return l == r ? 0: (l < r ? -1: 1);
                     }};
                     if(l.class_name() == "timestamp" && r.class_name() == "timestamp") {
                         return cmp(l.as_class<timespec_wrapper>(), r.as_class<timespec_wrapper>());
@@ -87,15 +124,6 @@ namespace teal {
                         }
                     }
                     return teal::valbox{valbox_no_initialize::dont_do_it};
-                }
-            );
-
-            rt->add_object_stringifier("timestamp",
-                [](valbox const &v) -> valbox {
-                    if(v.class_name() == "timestamp") {
-                        return v.as_class<timespec_wrapper>().as_iso_8601_str();
-                    }
-                    return std::string{};
                 }
             );
 

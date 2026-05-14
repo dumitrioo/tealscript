@@ -120,6 +120,8 @@ DISTFILES += \
     ../alu74181.png \
     ../example.teal \
     ../extending_example.teal \
+    ../external_client.teal \
+    ../external_server.teal \
     ../external_value.teal \
     ../kalman_1D_example.teal \
     ../one_second_limit.teal \

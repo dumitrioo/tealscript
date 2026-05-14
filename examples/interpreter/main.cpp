@@ -144,8 +144,7 @@ int main(int argc, char **argv) {
             throw std::runtime_error{"nothing to do - no working elements"};
         }
 
-        rt.start_net_server(teal::net::address_family::inet4, "0.0.0.0", 43987, 0);
-        rt.set_external_cells_update_interval(0.001L);
+        // rt.start_net_server(teal::net::address_family::inet4, "0.0.0.0", 43987, 0);
 
 #ifdef TEAL_SINGLE_THREADED
         while(!rt.termination_requested()) {

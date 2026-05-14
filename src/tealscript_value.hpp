@@ -7307,12 +7307,13 @@ namespace teal {
         valbox &deserialize(json const &jv, T *helper) {
             valbox &vr{deref()};
             auto t{str_to_type(jv["type"].as_string())};
-            json const &v{jv["value"]};
             switch(t) {
                 case type::BOOL:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(v.as_boolean(), type::BOOL);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = v.as_boolean();
                         vr.box_->type_ = type::CHAR;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7323,8 +7324,10 @@ namespace teal {
                     break;
                 case type::CHAR:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<char>(v.as_unumber()), type::CHAR);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<char>(v.as_unumber());
                         vr.box_->type_ = type::CHAR;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7335,8 +7338,10 @@ namespace teal {
                     break;
                 case type::S8:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::int8_t>(v.as_number()), type::S8);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::int8_t>(v.as_number());
                         vr.box_->type_ = type::S8;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7347,8 +7352,10 @@ namespace teal {
                     break;
                 case type::U8:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::uint8_t>(v.as_unumber()), type::U8);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::uint8_t>(v.as_unumber());
                         vr.box_->type_ = type::U8;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7359,8 +7366,10 @@ namespace teal {
                     break;
                 case type::S16:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::int16_t>(v.as_number()), type::S16);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::int16_t>(v.as_number());
                         vr.box_->type_ = type::S16;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7371,8 +7380,10 @@ namespace teal {
                     break;
                 case type::U16:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::uint16_t>(v.as_unumber()), type::U16);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::uint16_t>(v.as_unumber());
                         vr.box_->type_ = type::U16;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7383,8 +7394,10 @@ namespace teal {
                     break;
                 case type::WCHAR:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<wchar_t>(v.as_unumber()), type::WCHAR);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<wchar_t>(v.as_unumber());
                         vr.box_->type_ = type::WCHAR;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7395,8 +7408,10 @@ namespace teal {
                     break;
                 case type::S32:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::int32_t>(v.as_number()), type::S32);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::int32_t>(v.as_number());
                         vr.box_->type_ = type::S32;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7407,8 +7422,10 @@ namespace teal {
                     break;
                 case type::U32:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::uint32_t>(v.as_unumber()), type::U32);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::uint32_t>(v.as_unumber());
                         vr.box_->type_ = type::U32;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7419,8 +7436,10 @@ namespace teal {
                     break;
                 case type::S64:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::int64_t>(v.as_number()), type::S64);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::int64_t>(v.as_number());
                         vr.box_->type_ = type::S64;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7431,8 +7450,10 @@ namespace teal {
                     break;
                 case type::U64:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(static_cast<std::uint64_t>(v.as_unumber()), type::U64);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = static_cast<std::uint64_t>(v.as_unumber());
                         vr.box_->type_ = type::U64;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7443,8 +7464,10 @@ namespace teal {
                     break;
                 case type::FLOAT:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(v.as_float(), type::FLOAT);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = v.as_double();
                         vr.box_->type_ = type::FLOAT;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7455,8 +7478,10 @@ namespace teal {
                     break;
                 case type::DOUBLE:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(v.as_double(), type::DOUBLE);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = v.as_double();
                         vr.box_->type_ = type::DOUBLE;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7467,8 +7492,10 @@ namespace teal {
                     break;
                 case type::LONG_DOUBLE:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(v.as_longdouble(), type::LONG_DOUBLE);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = v.as_longdouble();
                         vr.box_->type_ = type::LONG_DOUBLE;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7478,6 +7505,7 @@ namespace teal {
                     }
                     break;
                 case type::VEC4: {
+                        json const &v{jv["value"]};
                         vec4_t v4{v[0].as_double(0), v[1].as_double(0), v[2].as_double(0), v[3].as_double(0)};
                         if(!vr.box_) {
                             vr.box_ = std::make_shared<box_data>(v4, type::VEC4);
@@ -7492,6 +7520,7 @@ namespace teal {
                     }
                     break;
                 case type::MAT4: {
+                        json const &v{jv["value"]};
                         mat4_t m4{
                             v[0][0].as_double(0), v[0][1].as_double(0), v[0][2].as_double(0), v[0][3].as_double(0),
                             v[1][0].as_double(0), v[1][1].as_double(0), v[1][2].as_double(0), v[1][3].as_double(0),
@@ -7516,7 +7545,7 @@ namespace teal {
                 case type::CLASS: {
                         valbox dv{
                             helper->obj_svc_[jv["class"].as_string()].deserializer(
-                                jv["class"].as_string(), v.as_string()
+                                jv["class"].as_string(), jv["value"].as_string()
                             )
                         };
                         if(!vr.box_) {
@@ -7532,6 +7561,7 @@ namespace teal {
                     }
                     break;
                 case type::FUNC: {
+                       json const &v{jv["value"]};
                         valbox fn{helper->find_func(v.as_string())};
                         if(fn.is_func_ref()) {
                             if(!vr.box_) {
@@ -7553,6 +7583,7 @@ namespace teal {
                 case type::ARRAY: {
                         vr.become_array();
                         vr.as_array().clear();
+                        json const &v{jv["value"]};
                         auto sz{v.size()};
                         for(std::size_t i{}; i < sz; ++i) {
                             vr.as_array().emplace_back(valbox_no_initialize::dont_do_it);
@@ -7564,6 +7595,7 @@ namespace teal {
                         try {
                             vr.become_object();
                             vr.as_object().clear();
+                            json const &v{jv["value"]};
                             v.traverse_object([&](std::string const &key, json const &val) {
                                 vr.as_object()[key].deserialize(val, helper);
                             });
@@ -7573,8 +7605,10 @@ namespace teal {
                     break;
                 case type::STRING:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(v.as_string(), type::STRING);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = v.as_string();
                         vr.box_->type_ = type::STRING;
                         vr.box_->pointed_type_ = type::UNDEFINED;
@@ -7585,8 +7619,10 @@ namespace teal {
                     break;
                 case type::WSTRING:
                     if(!vr.box_) {
+                        json const &v{jv["value"]};
                         vr.box_ = std::make_shared<box_data>(v.as_wstring(), type::WSTRING);
                     } else {
+                        json const &v{jv["value"]};
                         vr.box_->value_ = v.as_wstring();
                         vr.box_->type_ = type::WSTRING;
                         vr.box_->pointed_type_ = type::UNDEFINED;
