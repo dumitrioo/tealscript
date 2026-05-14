@@ -186,7 +186,6 @@ xnor2(a, b) { return !(a ^ b); }
 xnor3(a, b, c) { return !(a ^ b ^ c); }
 xnor4(a, b, c, d) { return !(a ^ b ^ c ^ d); }
 i2or2(a, b) { return !a || !b; }
-forward(v) return v;
 
 // ---------------------------------------------------------
 // The Graph
