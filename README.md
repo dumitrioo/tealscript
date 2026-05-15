@@ -159,10 +159,13 @@ How would you implement a given logic circuit in a regular programming language?
 
 ![Logic cirquit for 74181](examples/alu74181.png)
 
-I won’t bother you with waiting and will immediately provide the implementation in TealScript.
+And while you are thinking, I will offer you a solution in a TealScript programming language.
 
 ```TealScript
-// logical gates -------------------------------------------
+// ---------------------------------------------------------
+// logic gates simulation with
+// TealScript computation nodes templates
+// ---------------------------------------------------------
 not(a) { return !a; }
 fwd(a) { return (bool)a; }
 and2(a, b) { return a && b; }
@@ -207,7 +210,7 @@ i2or2(a, b) { return !a || !b; }
 'C_in' c_in;
 'M' m;
 
-///////////////////////// workers
+// workers -------------------------------------------------
 not   alu_0(b3);
 not   alu_1(b2);
 not   alu_2(b1);
@@ -272,6 +275,7 @@ xor2  alu_60(alu_35, alu_56)                          'f1';
 xor2  alu_61(alu_36, alu_52)                          'f0';
 and4  alu_62(alu_58, alu_59, alu_60, alu_61)          'EQ';
 ```
+
 As you can see, the graph is composed of computation node instances whose implementations described above that graph. And the program itself turned out to be short, understandable and covering the logical circuit one to one.
 
 
