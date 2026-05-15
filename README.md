@@ -16,12 +16,12 @@ You get a problem-specific tool to handle complex control schemes for multiple a
 
 
 ## Key Features
- * C-like sytax, most of C math functions provided.
- * Uniform Function Call Syntax (UFCS): where __func(obj, arg)__ call is equivalent of __obj.func(arg)__.
- * Simple integration, maximally intuitive syntax in order to provide a full range of capabilities while maintaining conciseness and readability of the program.
+ * Intuitive C-like sytax, conciseness and readability of the program, most of C math functions provided.
+  * Turing Complete & Extensible: Handle general-purpose tasks, math (functions, matrices), JSON, and custom host-provided types. Easily inject host functions into the scripting runtime. Simple integration, well defined rules of host-script interaction.
+ * Partially Stateful: DFG computation nodes are able to store a state between execution cycles which gives the ability to perform imperative work inside the node while the overall structure of the program is static declarative.
+ * Uniform Function Call Syntax (UFCS), where __func(obj, arg)__ call is fully equivalent of __obj.func(arg)__.
  * True Multi-Threading: Execute graph schemas in parallel across available CPU cores. The interpreter safely handles node execution without requiring the user to manage C++ threads or locks.
  * Zero Dependencies & Portable: Implemented as a custom execution tree interpreter (no LLVM/external lexers). It compiles into any C++20 codebase via CMake and is completely hardware-agnostic.
- * Turing Complete & Extensible: Handle general-purpose tasks, math (functions, matrices), JSON, and custom host-provided types. Easily inject host functions into the scripting runtime.
  * Network-Agnostic Distributed Graphs: Seamlessly link variables across different hosts using extern URIs. Built on a custom UDP multiplexing protocol (MTU-safe 1400 bytes) that eliminates Head-of-Line blocking without the overhead of TCP or heavy brokers like MQTT (see [example script](examples/external_value.teal)).
 
 
@@ -34,49 +34,52 @@ pass(v) return v;
 
 // Configuration for host code
 pass friction_force(.5) 'friction_force';
-pass cart_mass(1.0) 'cart_mass';
-pass pend_mass(0.3) 'pend_mass';
-pass start_force_impulse(0.5) 'start_force_impulse';
+pass cart_mass(1.) 'cart_mass';
+pass pend_mass(.3) 'pend_mass';
+pass start_force_impulse(1.) 'start_force_impulse';
 
-// PID balancing
-balance_pid(angle, dt) {
-    if(this.p_error == undefined) {
-        this.p_error = 0.0;
-        this.i_error = 0.0;
+balance_pid(angle, dt) { // PID balancing
+    if(this.p == undefined) {
+        this.p = 0.0;
+        this.i = 0.0;
     }
-    prev_ang = this.p_error;
-    this.p_error = angle;
-    this.i_error = dt * this.i_error + angle;
-    d_error = (angle - prev_ang) / dt;
-    return 60.0 * this.p_error + 20.0 * this.i_error + 20.0 * d_error;
+    prev_ang = this.p;
+    this.p = angle;
+    this.i = dt * this.i + angle;
+    d = (angle - prev_ang) / dt;
+    return 60.0 * this.p + 20.0 * this.i + 20.0 * d;
 }
 
-// Lazy centering
-center_pid(cart_pos, cart_vel) {
-    return 4.0 * sqrt(abs(cart_pos)) * sign(cart_pos) + 
-           4.0 * sqrt(abs(cart_vel)) * sign(cart_vel);
+center_pid(cart_pos, cart_vel) { // Lazy centering
+    return abs(cart_pos) < 2.0
+        ?
+            4.0 * sqrt(abs(cart_pos)) * sign(cart_pos) +
+            4.0 * sqrt(abs(cart_vel)) * sign(cart_vel)
+        :
+            2.0 * sign(cart_pos) + 2.0 * sign(cart_vel);
 }
 
-// "Soft wall"
-soft_wall(cp) {
+soft_wall(cp) { // "Soft wall"
     return abs(cp) > 4.5 ? sign(cp) * 8.0 : 0.0;
 }
 
-mixer(balance_force, center_force, wall_force) {
-    return balance_force + center_force + wall_force;
+mixer(balance_force, center_force, wall_force) { // Mix & clamp
+    v = balance_force + center_force + wall_force;
+    d = 80.0;
+    return v < -d ? -d : v > d ? d : v;
 }
 
 // ---------------------------------------------------------
 // The Graph
 // ---------------------------------------------------------
 
-// Inputs from host code
+// inputs from host code
 'dt' dt;
 'ang' angle;
 'cart_pos' cart_pos;
 'cart_vel' cart_vel;
 
-// Worker nodes
+// workers
 balance_pid balancer(angle, dt);
 center_pid centerer(cart_pos, cart_vel);
 soft_wall wall(cart_pos);
