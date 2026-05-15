@@ -88,78 +88,13 @@ https://github.com/dumitrioo/tealscript/blob/main/resources/pid_demo.mp4
 
 [Example application](examples/pendulum/main.cpp)
 
-## Application & Use Cases
-
-TealScript excels at "sense → compute → act" pipelines: 
-
- * Robotics & Autonomous Systems: High-throughput signal processing, sensor fusion, and driving actuators in real time.
- * Industrial Automation: Replacing heavy PLC logic with portable C++ integrations.
- * Edge Computing / IoT: Orchestration of distributed controllers without centralized message brokers.
- * Simulations & Digital Twins: Logical linking of separately attached hardware or virtual devices.
-     
-
-## Usage & Integration
-
-The usage of library is as simple as following:
-
-1. Include [tealscript_runtime.hpp](src/tealscript_runtime.hpp) header file
-2. Instantiate the TealScript runtime object and load scripting sources (from strings or files) into the runtime.
-3. Optionally, add your custom C++ functions, variables, types (if any) into the runtime instance.
-4. Execute runtime in single/multi-threaded mode exchanging data.
-
-
-```C++
-#include <tealscript_runtime.hpp>
-
-// This example is related to the script example shown above
-
-int main(int argc, char **argv) {
-    if(argc < 2) {
-        return 0;
-    }
-
-    // tealscript runtime instance 
-    teal::runtime rt{};
-
-    // loading script file passed from command line
-    rt.load_file(argv[1]);
-    rt.loading_complete();
-    
-    ...
-    ...
-    
-    while(simulationInProgress) {
-        ...
-        ...
-        // Sensors update
-        rt.set_input("dt", dt);
-        rt.set_input("ang", angle);
-        rt.set_input("cart_pos", cart_x);
-        rt.set_input("cart_vel", cart_vel);
-
-        // Compute in the same thread (single-threaded execution)
-        rt.run_cycle();
-        
-        // Fetch controllong value from runtime
-        force = rt.get_output("motor_force").cast_to_double();
-        
-        // Apply script results
-        cartBody->applyCentralForce(btVector3(force, 0, 0));
-        ...
-        ...
-    }
-
-    return 0;
-}
-```
-
 ## Another Example
 
 How would you implement the following logic circuit in a regular programming language?
 
 ![Logic cirquit for 74181](examples/alu74181.png)
 
-And while you are thinking, I will offer you a solution in a TealScript programming language.
+And while you are thinking, I will offer you a ([solution](examples/alu74181.teal)) in a TealScript programming language.
 
 ```TealScript
 // ---------------------------------------------------------
@@ -278,6 +213,72 @@ and4  alu_62(alu_58, alu_59, alu_60, alu_61)          'EQ';
 
 As you can see, the graph is composed of computation node instances whose implementations described above that graph. And the program itself turned out to be short, understandable and covering the logical circuit one to one.
 
+
+
+## Application & Use Cases
+
+TealScript excels at "sense → compute → act" pipelines: 
+
+ * Robotics & Autonomous Systems: High-throughput signal processing, sensor fusion, and driving actuators in real time.
+ * Industrial Automation: Replacing heavy PLC logic with portable C++ integrations.
+ * Edge Computing / IoT: Orchestration of distributed controllers without centralized message brokers.
+ * Simulations & Digital Twins: Logical linking of separately attached hardware or virtual devices.
+     
+
+## Usage & Integration
+
+The usage of library is as simple as following:
+
+1. Include [tealscript_runtime.hpp](src/tealscript_runtime.hpp) header file
+2. Instantiate the TealScript runtime object and load scripting sources (from strings or files) into the runtime.
+3. Optionally, add your custom C++ functions, variables, types (if any) into the runtime instance.
+4. Execute runtime in single/multi-threaded mode exchanging data.
+
+
+```C++
+#include <tealscript_runtime.hpp>
+
+// This example is related to the script example shown above
+
+int main(int argc, char **argv) {
+    if(argc < 2) {
+        return 0;
+    }
+
+    // tealscript runtime instance 
+    teal::runtime rt{};
+
+    // loading script file passed from command line
+    rt.load_file(argv[1]);
+    rt.loading_complete();
+    
+    ...
+    ...
+    
+    while(simulationInProgress) {
+        ...
+        ...
+        // Sensors update
+        rt.set_input("dt", dt);
+        rt.set_input("ang", angle);
+        rt.set_input("cart_pos", cart_x);
+        rt.set_input("cart_vel", cart_vel);
+
+        // Compute in the same thread (single-threaded execution)
+        rt.run_cycle();
+        
+        // Fetch controllong value from runtime
+        force = rt.get_output("motor_force").cast_to_double();
+        
+        // Apply script results
+        cartBody->applyCentralForce(btVector3(force, 0, 0));
+        ...
+        ...
+    }
+
+    return 0;
+}
+```
 
 To build the examples (on Linux): 
 ``` bash 
