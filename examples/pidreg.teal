@@ -2,54 +2,52 @@ pass(v) return v;
 
 // Configuration for host code
 pass friction_force(.5) 'friction_force';
-pass cart_mass(1.0) 'cart_mass';
-pass pend_mass(0.3) 'pend_mass';
-pass start_force_impulse(0.5) 'start_force_impulse';
+pass cart_mass(1.) 'cart_mass';
+pass pend_mass(.3) 'pend_mass';
+pass start_force_impulse(1.) 'start_force_impulse';
 
-// PID balancing
-balance_pid(angle, dt) {
-    if(this.p_error == undefined) {
-        this.p_error = 0.0;
-        this.i_error = 0.0;
+balance_pid(angle, dt) { // PID balancing
+    if(this.p == undefined) {
+        this.p = 0.0;
+        this.i = 0.0;
     }
-    kp = 60.0;
-    ki = 20.0;
-    kd = 20.0;
-    prev_ang = this.p_error;
-    this.p_error = angle;
-    this.i_error = dt * this.i_error + angle;
-    d_error = (angle - prev_ang) / dt;
-    res = kp * this.p_error + ki * this.i_error + kd * d_error;
-    return res;
+    prev_ang = this.p;
+    this.p = angle;
+    this.i = dt * this.i + angle;
+    d = (angle - prev_ang) / dt;
+    return 60.0 * this.p + 20.0 * this.i + 20.0 * d;
 }
 
-// Lazy centering
-center_pid(cart_pos, cart_vel) {
-    return abs(cart_pos) < 2
+center_pid(cart_pos, cart_vel) { // Lazy centering
+    return abs(cart_pos) < 2.0
         ?
-        4.0 * sqrt(abs(cart_pos)) * sign(cart_pos) + 4.0 * sqrt(abs(cart_vel)) * sign(cart_vel)
+            4.0 * sqrt(abs(cart_pos)) * sign(cart_pos) +
+            4.0 * sqrt(abs(cart_vel)) * sign(cart_vel)
         :
-        2.0 * sign(cart_pos) + 2.0 * sign(cart_vel);
+            2.0 * sign(cart_pos) + 2.0 * sign(cart_vel);
 }
 
-// "Soft wall"
-soft_wall(cp) {
+soft_wall(cp) { // "Soft wall"
     return abs(cp) > 4.5 ? sign(cp) * 8.0 : 0.0;
 }
 
-mixer(balance_force, center_force, wall_force) {
-    out = balance_force + center_force + wall_force;
-    return out > 80.0 ? 80.0 : out < -80.0 ? -80.0 : out;
+mixer(balance_force, center_force, wall_force) { // Mix & clamp
+    v = balance_force + center_force + wall_force;
+    d = 80.0;
+    return v < -d ? -d : v > d ? d : v;
 }
 
 // ---------------------------------------------------------
 // The Graph
 // ---------------------------------------------------------
-// Inputs from host code
+
+// inputs from host code
 'dt' dt;
 'ang' angle;
 'cart_pos' cart_pos;
 'cart_vel' cart_vel;
+
+// workers
 balance_pid balancer(angle, dt);
 center_pid centerer(cart_pos, cart_vel);
 soft_wall wall(cart_pos);
