@@ -1965,7 +1965,7 @@ namespace teal {
                                 return it->second(r).cast_to_bool();
                             }
                         }
-                        return l.cast_to_bool();
+                        return r.cast_to_bool();
                     }
                 },
                 /* BITAND */
@@ -2045,7 +2045,7 @@ namespace teal {
                                 return it->second(r).cast_to_bool();
                             }
                         }
-                        return l.cast_to_bool();
+                        return r.cast_to_bool();
                     }
                 },
                 /* QUESTION */ nullptr,
