@@ -112,6 +112,8 @@ LIBS += -lpthread -ldl
 DISTFILES += \
     ../../README.md \
     ../alu74181.teal \
+    ../alu74181_model.teal \
+    ../alu74181_view.teal \
     ../array_buffer_test.teal \
     ../draft.teal \
     ../ex_cli.teal \

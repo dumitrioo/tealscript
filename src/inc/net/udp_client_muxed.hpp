@@ -77,7 +77,7 @@ namespace teal::net {
                     if((sock_fd_ = ::socket(AF_INET, SOCK_DGRAM, 0)) != -1) {
                         if(sock_fd_ != -1) {
                             try {
-                                if(helpers::set_rcv_timeout(sock_fd_, 15)) {
+                                if(helpers::set_rcv_timeout(sock_fd_, 3)) {
                                     in_addr dst_ip{teal::net::resolve(addr)};
                                     std::memset(&serv_addr_.v4_, 0, sizeof(serv_addr_.v4_));
                                     serv_addr_.v4_.sin_family = AF_INET;
@@ -96,7 +96,7 @@ namespace teal::net {
                     if((sock_fd_ = ::socket(AF_INET6, SOCK_DGRAM, 0)) != -1) {
                         if(sock_fd_ != -1) {
                             try {
-                                if(helpers::set_rcv_timeout(sock_fd_, 15)) {
+                                if(helpers::set_rcv_timeout(sock_fd_, 3)) {
                                     in6_addr dst_ip{teal::net::resolve6(addr)};
                                     std::memset(&serv_addr_.v6_, 0, sizeof(serv_addr_.v6_));
                                     serv_addr_.v6_.sin6_family = AF_INET6;
@@ -372,7 +372,7 @@ namespace teal::net {
         long double last_time_demuxer_check_{0};
         net::socket_poller poller_{};
         std::uint64_t conn_id_{0};
-        long double recv_timeout_{15.0L};
+        long double recv_timeout_{3.0L};
         union {
             struct sockaddr_in v4_;
             struct sockaddr_in6 v6_;

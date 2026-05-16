@@ -1126,7 +1126,7 @@ namespace teal {
                 return ts > 0 ? ts : 1;
             });
 
-            add_function("enable_values_network_exposing", TEALFUN(args) {
+            add_function("enable_external_values_server", TEALFUN(args) {
                 TEAL_CHCK_FUN_PARMS_NUM_IN_RANGE(args, 0, 3);
                 std::string bind_addr{"0.0.0.0"};
                 std::uint16_t port{43987};
@@ -1429,7 +1429,7 @@ namespace teal {
                     throw std::runtime_error{"set single thread mode first"};
                 }
             }
-            start_extcell_processing();
+            // start_extcell_processing();
             exctx_.clear_all_jumps_request();
             for(auto &&w: worker_cells_) {
                 std::shared_ptr<worker_cell_instance> &curr_cell{w.second};
@@ -1608,7 +1608,7 @@ namespace teal {
             unfail();
             unterminate();
 
-            start_extcell_processing();
+            // start_extcell_processing();
             for(int i{0}; i < thrd_cnt; ++i) {
                 threads_.emplace_back([this]() {
                     bool excepted{false};
@@ -1844,21 +1844,8 @@ namespace teal {
             std::uint16_t port,
             long double stale_connections_removal_timeout
         ) override {
-            {
-                std::shared_lock l1{ppserver_mtp_};
-                std::unique_lock l2{cq_mtp_};
-                if(!cq_) {
-                    cq_ = std::make_unique<command_queue>(std::thread::hardware_concurrency());
-                    cq_->set_workload_to_start_spawn_threads(0.9);
-                    cq_->set_workload_to_start_kill_threads(0.1);
-                    cq_->set_min_seconds_between_killings(1);
-                }
-            }
+            start_pp_subs();
             std::shared_lock l{ppserver_mtp_};
-            pp_subs_functor_terminate_ = false;
-            if(!pp_subs_functor_running()) {
-                cq_->enqueue_urgent(pp_subs_functor_);
-            }
             if(!ppserver_) {
                 l.unlock();
                 std::unique_lock l1{ppserver_mtp_};
@@ -1884,8 +1871,8 @@ namespace teal {
         }
 
         void stop_net_server() override {
+            stop_pp_subs();
             std::unique_lock l{ppserver_mtp_};
-            pp_subs_functor_terminate_ = true;
             ppserver_.reset();
         }
 
@@ -1922,10 +1909,11 @@ namespace teal {
             auto ast{prs.parse()};
 
             code_generator lj{};
-            lj.chop(
-                ast, input_cells_, input_names_to_instances_mapping_, worker_cells_templates_,
+            lj.chop(ast, input_cells_, input_names_to_instances_mapping_, worker_cells_templates_,
                 worker_cells_, worker_bodies_, user_functions_, global_functions_dictionary_, extern_cells_
             );
+            ext_cells_processor_needed_ = ext_cells_processor_needed_ || (extern_cells_.size() > 0);
+            start_extcell_processing();
         }
 
         bool load_library(std::string const &fname) {
@@ -2134,14 +2122,62 @@ namespace teal {
         mutable shared_mutex cq_mtp_{};
         std::unique_ptr<command_queue> cq_{};
 
+        void start_command_queue(size_t num_threads = std::thread::hardware_concurrency()) {
+            if(command_queue_started()) {
+                return;
+            }
+            std::unique_lock l{cq_mtp_};
+            if(!cq_) {
+                cq_ = std::make_unique<command_queue>(num_threads);
+                cq_->set_workload_to_start_spawn_threads(0.9);
+                cq_->set_workload_to_start_kill_threads(0.1);
+                cq_->set_min_seconds_between_killings(1);
+            }
+        }
+
+        void stop_command_queue() {
+            std::unique_lock l{cq_mtp_};
+            cq_.reset();
+        }
+
+        bool command_queue_started() const {
+            std::shared_lock l{cq_mtp_};
+            return cq_.get() != nullptr;
+        }
+
         std::string network_access_point_url_{};
         std::string network_name_{};
         mutable shared_mutex extern_cells_mtp_{};
         str_map_t<std::shared_ptr<extern_cell>> extern_cells_{};
         mutable shared_mutex ext_cells_processor_mtp_{};
+        std::atomic<bool> ext_cells_processor_needed_{false};
         std::atomic<bool> ext_cells_processor_started_{false};
         bool ext_cells_processor_enabled_{true};
-        std::thread ext_cells_processor_{};
+        std::function<void()> ext_cells_processor_{[this]() {
+            long double last_sub_time{0};
+            if(!termination_requested() && ext_cells_processor_enabled_) {
+                ext_cells_processor_started_ = true;
+                if(!extern_cells_.empty()) {
+                    if(steady_time_sec() > last_sub_time + 5) {
+                        last_sub_time = steady_time_sec();
+                        std::shared_lock l{extern_cells_mtp_};
+                        for(auto cp: extern_cells_) {
+                            json requ{};
+                            requ["act"] = "sub";
+                            requ["name"] = cp.second->remote_var_name();
+                            requ["alias"] = cp.second->inst_name();
+                            if(auto con{get_connected_client(cp.second.get())}) {
+                                con->send(requ.bserialize());
+                            }
+                        }
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds{10});
+                cq_->enqueue(ext_cells_processor_);
+            } else {
+                ext_cells_processor_started_ = false;
+            }
+        }};
 
         mutable shared_mutex pp_clients_mtp_{};
         std::map<std::string, std::map<int, std::shared_ptr<pp_client_udp>>> pp_clients_{};
@@ -2180,51 +2216,28 @@ namespace teal {
             return ext_cells_processor_started_.load(std::memory_order_relaxed);
         }
 
+        bool extcell_processing_needed() const {
+            return ext_cells_processor_needed_.load(std::memory_order_relaxed);
+        }
+
         void start_extcell_processing() {
-            if(extcell_processing_started()) {
+            if(extcell_processing_started() || !extcell_processing_needed()) {
                 return;
             }
 
-            {
-                std::unique_lock l1{cq_mtp_};
-                if(!cq_) {
-                    cq_ = std::make_unique<command_queue>(std::thread::hardware_concurrency());
-                    cq_->set_workload_to_start_spawn_threads(0.9);
-                    cq_->set_workload_to_start_kill_threads(0.1);
-                    cq_->set_min_seconds_between_killings(1);
-                }
+            if(!command_queue_started()) {
+                start_command_queue();
             }
 
             std::unique_lock l{ext_cells_processor_mtp_};
 
             ext_cells_processor_enabled_ = false;
-            if(ext_cells_processor_.joinable()) {
-                ext_cells_processor_.join();
+            while(ext_cells_processor_started_) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{1});
             }
 
             ext_cells_processor_enabled_ = true;
-            ext_cells_processor_ = std::thread{[this]() {
-                long double last_sub_time{0};
-                while(ext_cells_processor_enabled_) {
-                    if(!extern_cells_.empty()) {
-                        if(steady_time_sec() > last_sub_time + 5) {
-                            last_sub_time = steady_time_sec();
-                            std::shared_lock l{extern_cells_mtp_};
-                            for(auto cp: extern_cells_) {
-                                json requ{};
-                                requ["act"] = "sub";
-                                requ["name"] = cp.second->remote_var_name();
-                                requ["alias"] = cp.second->inst_name();
-                                if(auto con{get_connected_client(cp.second.get())}) {
-                                    con->send(requ.bserialize());
-                                }
-                            }
-                        }
-                    }
-                    std::this_thread::sleep_for(std::chrono::milliseconds{10});
-                }
-                ext_cells_processor_started_ = false;
-            }};
+            cq_->enqueue(ext_cells_processor_);
             ext_cells_processor_started_ = true;
         }
 
@@ -2232,21 +2245,13 @@ namespace teal {
             {
                 std::unique_lock l{ext_cells_processor_mtp_};
                 ext_cells_processor_enabled_ = false;
-                if(ext_cells_processor_.joinable()) {
-                    ext_cells_processor_.join();
+                while(ext_cells_processor_started_) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds{1});
                 }
-                ext_cells_processor_started_ = false;
             }
             {
                 std::unique_lock l1{pp_clients_mtp_};
                 pp_clients_.clear();
-            }
-            {
-                std::shared_lock l{ppserver_mtp_};
-                std::unique_lock l1{cq_mtp_};
-                if(!ppserver_) {
-                    cq_.reset();
-                }
             }
         }
 
@@ -2282,25 +2287,25 @@ namespace teal {
 
         mutable std::shared_mutex net_subs_mtp_{};
         std::atomic_bool pp_subs_functor_running_{false};
-        std::atomic_bool pp_subs_functor_terminate_{false};
+        std::atomic_bool pp_subs_functor_enabled_{false};
         std::map<conn_id_t, net_value_subscriber> net_subs_{};
         uint64_t ext_cells_refresh_interval_nanos_{1000000ULL};
 
         void pp_subscribe(conn_id_t conn_id, std::string const &name, std::string const &alias) {
             std::unique_lock l{net_subs_mtp_};
-            if(!pp_subs_functor_terminate_) {
+            if(pp_subs_functor_enabled_) {
                 net_subs_[conn_id].subscribe(name, alias);
             }
         }
         void pp_unsubscribe(conn_id_t conn_id, std::string const &name) {
             std::unique_lock l{net_subs_mtp_};
-            if(!pp_subs_functor_terminate_) {
+            if(pp_subs_functor_enabled_) {
                 net_subs_[conn_id].unsubscribe(name);
             }
         }
         void pp_remove(conn_id_t conn_id) {
             std::unique_lock l{net_subs_mtp_};
-            if(!pp_subs_functor_terminate_) {
+            if(pp_subs_functor_enabled_) {
                 net_subs_.erase(conn_id);
             }
         }
@@ -2308,6 +2313,23 @@ namespace teal {
         bool pp_subs_functor_running() const {
             std::shared_lock l{net_subs_mtp_};
             return pp_subs_functor_running_;
+        }
+
+        void start_pp_subs() {
+            start_command_queue();
+            std::unique_lock l{net_subs_mtp_};
+            pp_subs_functor_enabled_ = true;
+            cq_->enqueue(pp_subs_functor_);
+        }
+
+        void stop_pp_subs() {
+            pp_subs_functor_enabled_ = false;
+            while(pp_subs_functor_running_) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{1});
+            }
+            if(!ext_cells_processor_needed_) {
+                stop_command_queue();
+            }
         }
 
         std::function<void()> pp_subs_functor_{[this]() {
@@ -2372,8 +2394,8 @@ namespace teal {
             if(ext_cells_refresh_interval_nanos_ > 0) {
                 std::this_thread::sleep_for(std::chrono::nanoseconds{ext_cells_refresh_interval_nanos_});
             }
-            if(!termination_requested() && !pp_subs_functor_terminate_) {
-                cq_->enqueue_urgent(pp_subs_functor_);
+            if(!termination_requested() && pp_subs_functor_enabled_) {
+                cq_->enqueue(pp_subs_functor_);
             } else {
                 std::unique_lock l{net_subs_mtp_};
                 net_subs_.clear();

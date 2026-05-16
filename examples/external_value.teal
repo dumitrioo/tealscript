@@ -1,6 +1,6 @@
 setup_cell() {
     if(!this.set_up) {
-        // enable_values_network_exposing("0.0.0.0", 43987);
+        enable_external_values_server("0.0.0.0", 43987);
         set_extern_update_seconds(0.001);
         set_cycle_sleep_seconds(0.001);
         set_inactive_sleep_seconds(0.01);
