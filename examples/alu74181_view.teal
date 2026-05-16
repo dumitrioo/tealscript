@@ -4,8 +4,6 @@
 setup_cell() {
     if(!this.set_up) {
         set_extern_update_seconds(0.1);
-        set_cycle_sleep_seconds(0.005);
-        set_inactive_sleep_seconds(0.01);
         this.set_up = true;
     }
     return 0;
