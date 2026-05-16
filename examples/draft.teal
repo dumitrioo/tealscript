@@ -125,7 +125,7 @@ my_drafts(host_data) {
         println("t!");
     }
 
-    return exit();
+    // return exit();
 
     arr = 3 + [12, undefined, '2', "122", 9090.9090, [],];
     arr.println();

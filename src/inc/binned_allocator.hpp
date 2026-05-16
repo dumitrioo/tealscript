@@ -67,13 +67,9 @@ namespace teal {
             alloc_unit_hdr *res_ptr{nullptr};
             free_list &fl{free_lists_[bin_index(aligned_size)]};
             {
-                std::shared_lock l1{fl.mtp};
+                std::unique_lock l1{fl.mtp};
                 res_ptr = fl.head.load();
-                while(res_ptr != nullptr) {
-                    alloc_unit_hdr *nxt{res_ptr->next};
-                    if(fl.head.compare_exchange_weak(res_ptr, nxt)) {
-                        break;
-                    }
+                while(res_ptr != nullptr && !fl.head.compare_exchange_strong(res_ptr, res_ptr->next)) {
                 }
             }
             if(res_ptr == nullptr) {
@@ -107,10 +103,9 @@ namespace teal {
             }
             free_list &fl{free_lists_[bin_index(aligned_size)]};
             {
-                std::unique_lock l1{fl.mtp};
                 for(
                     res_ptr->next = fl.head.load();
-                    !fl.head.compare_exchange_weak(res_ptr->next, res_ptr)
+                    !fl.head.compare_exchange_strong(res_ptr->next, res_ptr)
                     ;
                 );
             }
@@ -132,11 +127,10 @@ namespace teal {
             }
             free_list &fl{free_lists_[bin_index(stored_size)]};
             {
-                std::unique_lock l1{fl.mtp};
                 for(
                     res_ptr->next = fl.head.load()
                     ;
-                    !fl.head.compare_exchange_weak(res_ptr->next, res_ptr)
+                    !fl.head.compare_exchange_strong(res_ptr->next, res_ptr)
                     ;
                 );
             }

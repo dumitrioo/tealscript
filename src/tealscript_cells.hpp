@@ -45,7 +45,6 @@ namespace teal {
     };
 
 
-#ifdef TEAL_USE_EXTERNAL_VALUES
     class extern_cell: public cell_base {
     public:
         virtual void exec(execution_context *) {
@@ -65,7 +64,6 @@ namespace teal {
         std::string remote_name_{};
         std::string remote_host_{};
     };
-#endif
 
     class worker_cell_definition_info {
     public:

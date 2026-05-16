@@ -1144,21 +1144,13 @@ namespace teal {
             });
 
             add_function("extern_update_nanointerval", TEALFUN(args) {
-#ifdef TEAL_USE_EXTERNAL_VALUES
                 return ext_cells_refresh_interval_nanos_;
-#else
-                return uint64_t{};
-#endif
             });
 
             add_function("set_extern_update_seconds", TEALFUN(args) {
-#ifdef TEAL_USE_EXTERNAL_VALUES
                 TEAL_CHCK_FUN_PARMS_NUM_EQ(args, 1);
                 ext_cells_refresh_interval_nanos_ = args[0].cast_to_long_double() * 1'000'000'000;
                 return ext_cells_refresh_interval_nanos_;
-#else
-                return uint64_t{};
-#endif
             });
 
             add_function("size", TEALFUN(args) {
@@ -1191,9 +1183,7 @@ namespace teal {
             terminate();
             stop_mt();
             stop_net_server();
-#ifdef TEAL_USE_EXTERNAL_VALUES
             stop_extcell_processing();
-#endif
             worker_cells_templates_.clear();
             global_constants_dictionary_.clear();
             global_functions_dictionary_.clear();
@@ -1439,9 +1429,7 @@ namespace teal {
                     throw std::runtime_error{"set single thread mode first"};
                 }
             }
-#ifdef TEAL_USE_EXTERNAL_VALUES
             start_extcell_processing();
-#endif
             exctx_.clear_all_jumps_request();
             for(auto &&w: worker_cells_) {
                 std::shared_ptr<worker_cell_instance> &curr_cell{w.second};
@@ -1480,21 +1468,17 @@ namespace teal {
                                     ai.cell_ptr = in_it->second.get();
                                     exctx_.set_local_value(curr_arg_name, in_it->second->value());
                                 } else {
-#ifdef TEAL_USE_EXTERNAL_VALUES
                                     auto ex_it{extern_cells_.find(ai.cell_name)};
                                     if(ex_it != extern_cells_.end()) {
                                         ai.cell_ptr = ex_it->second.get();
                                         exctx_.set_local_value(curr_arg_name, ex_it->second->value());
                                     } else {
-#endif
                                         throw runtime_error{
                                             curr_cell->line(), curr_cell->col(),
                                             std::string{"input value not found for compute element \""} +
                                                 curr_cell->inst_name() + "\""
                                         };
-#ifdef TEAL_USE_EXTERNAL_VALUES
                                     }
-#endif
                                 }
                             }
                         }
@@ -1624,9 +1608,7 @@ namespace teal {
             unfail();
             unterminate();
 
-#ifdef TEAL_USE_EXTERNAL_VALUES
             start_extcell_processing();
-#endif
             for(int i{0}; i < thrd_cnt; ++i) {
                 threads_.emplace_back([this]() {
                     bool excepted{false};
@@ -1685,21 +1667,17 @@ namespace teal {
                                                         ai.cell_ptr = in_it->second.get();
                                                         exctx_ptr->set_local_value(curr_arg_name, ai.cell_ptr->value());
                                                     } else {
-#ifdef TEAL_USE_EXTERNAL_VALUES
                                                         auto ex_it{extern_cells_.find(ai.cell_name)};
                                                         if(ex_it != extern_cells_.end()) {
                                                             ai.cell_ptr = ex_it->second.get();
                                                             exctx_ptr->set_local_value(curr_arg_name, ai.cell_ptr->value());
                                                         } else {
-#endif
                                                             throw runtime_error{
                                                                 curr_cell->line(), curr_cell->col(),
                                                                 std::string{"input value not found for compute element \""} +
                                                                     curr_cell->inst_name() + "\""
                                                             };
-#ifdef TEAL_USE_EXTERNAL_VALUES
                                                         }
-#endif
                                                     }
                                                 }
                                             }
@@ -1924,11 +1902,9 @@ namespace teal {
             return static_cast<long double>(ext_cells_refresh_interval_nanos_) / 1'000'000'000.0L;
         }
 
-#ifdef TEAL_USE_EXTERNAL_VALUES
         // TODO: implement this and the standalone distributed service
         void net_hub_connect(std::string const &/*host_addr*/, std::uint16_t /*port*/, std::string const &/*unique_net_name*/) override {
         }
-#endif
 
     private:
         void load_source_string(std::string const &src) {
@@ -1948,11 +1924,7 @@ namespace teal {
             code_generator lj{};
             lj.chop(
                 ast, input_cells_, input_names_to_instances_mapping_, worker_cells_templates_,
-                worker_cells_, worker_bodies_, user_functions_, global_functions_dictionary_
-#ifdef TEAL_USE_EXTERNAL_VALUES
-                ,
-                extern_cells_
-#endif
+                worker_cells_, worker_bodies_, user_functions_, global_functions_dictionary_, extern_cells_
             );
         }
 
@@ -2161,7 +2133,6 @@ namespace teal {
 
         mutable shared_mutex cq_mtp_{};
         std::unique_ptr<command_queue> cq_{};
-#ifdef TEAL_USE_EXTERNAL_VALUES
 
         std::string network_access_point_url_{};
         std::string network_name_{};
@@ -2278,7 +2249,6 @@ namespace teal {
                 }
             }
         }
-#endif
 
         mutable shared_mutex ppserver_mtp_{};
         std::unique_ptr<pp_server_udp> ppserver_{nullptr};
@@ -2368,12 +2338,10 @@ namespace teal {
                                     auto it{worker_cells_.find(nme)};
                                     if(it != worker_cells_.end()) { cellptr = it->second.get(); break; }
                                 }
-#ifdef TEAL_USE_EXTERNAL_VALUES
                                 {
                                     auto it{extern_cells_.find(nme)};
                                     if(it != extern_cells_.end()) { cellptr = it->second.get(); break; }
                                 }
-#endif
                             } while(false);
                             bool need_send{false};
                             if(cellptr != nullptr) {

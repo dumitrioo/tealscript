@@ -88,13 +88,11 @@ namespace teal {
         virtual void set_external_cells_update_interval(long double /*seconds*/) = 0;
         virtual long double external_cells_update_interval() const = 0;
 
-#ifdef TEAL_USE_EXTERNAL_VALUES
         // connect to a common network for exchanging values (alternative to the above)
         virtual void net_hub_connect(
             std::string const &/*host_addr*/,
             std::uint16_t /*port*/, std::string const &/*unique_net_name*/
         ) = 0;
-#endif
     };
 
     class extension_interface {

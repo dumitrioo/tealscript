@@ -44,9 +44,7 @@ namespace teal {
             , str_map_t<statement_ptr> &worker_bodies
             , str_map_t<function_definition> &user_functions
             , str_map_t<valbox> const &global_functions_dictionary
-#ifdef TEAL_USE_EXTERNAL_VALUES
             , str_map_t<std::shared_ptr<extern_cell>> &extern_cells
-#endif
         ) {
             for(std::size_t i = 0; i < ast.size(); ++i) {
                 json const &cur{ast[i]};
@@ -76,11 +74,8 @@ namespace teal {
                         std::string inm{cur_cnt["input_name"].as_string()};
                         if(
                             worker_cells.find(cnm) != worker_cells.end() ||
-                            input_cells.find(cnm) != input_cells.end()
-#ifdef TEAL_USE_EXTERNAL_VALUES
-                            ||
+                            input_cells.find(cnm) != input_cells.end() ||
                             extern_cells.find(cnm) != extern_cells.end()
-#endif
                         ) {
                             throw compilation_error{
                                 cur["loc"]["line"].try_as_number(),
@@ -94,9 +89,7 @@ namespace teal {
                         ic_ptr->set_inst_name(cnm);
                         input_names_to_instances_mapping[inm] = cnm;
                         ic_ptr->set_loc(cur["loc"]["line"].try_as_number(), cur["loc"]["col"].try_as_number());
-                    }
-#ifdef TEAL_USE_EXTERNAL_VALUES
-                    else if(array_contains_str(cur_cnt["cell_flags"], "extern")) {
+                    } else if(array_contains_str(cur_cnt["cell_flags"], "extern")) {
                         std::string cnm{cur_cnt["cell_name"].as_string()};
                         std::string rnm{cur_cnt["remote_name"].as_string()};
                         url u{rnm};
@@ -140,17 +133,12 @@ namespace teal {
                             cur["loc"]["line"].try_as_number(),
                             cur["loc"]["col"].try_as_number()
                         );
-                    }
-#endif
-                    else if(array_contains_str(cur_cnt["cell_flags"], "regular")) {
+                    } else if(array_contains_str(cur_cnt["cell_flags"], "regular")) {
                         std::string cnm{cur_cnt["cell_name"].as_string()};
                         if(
                             worker_cells.find(cnm) != worker_cells.end() ||
-                            input_cells.find(cnm) != input_cells.end()
-#ifdef TEAL_USE_EXTERNAL_VALUES
-                            ||
+                            input_cells.find(cnm) != input_cells.end() ||
                             extern_cells.find(cnm) != extern_cells.end()
-#endif
                         ) {
                             throw compilation_error{
                                 cur["loc"]["line"].try_as_number(),

@@ -214,9 +214,7 @@ namespace teal {
                     };
                 }
                 increment_pos();
-            }
-#ifdef TEAL_USE_EXTERNAL_VALUES
-            else if(
+            } else if(
                 get_token(0).is_id() && get_token(0).lexem() == L"extern" &&
                 get_token(1).type_is(token::type::CHAR_LITERAL) &&
                 get_token(2).is_id()
@@ -240,9 +238,7 @@ namespace teal {
                     };
                 }
                 increment_pos();
-            }
-#endif
-            else if(get_token(0).type_is(token::type::CHAR_LITERAL) && get_token(1).is_id()) {
+            } else if(get_token(0).type_is(token::type::CHAR_LITERAL) && get_token(1).is_id()) {
                 res["loc"]["line"] = get_token(0).line();
                 res["loc"]["col"] = get_token(0).col();
                 auto in{get_token(0).lexem()};
