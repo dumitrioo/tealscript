@@ -162,8 +162,8 @@ namespace teal::net {
 
         void remove_all_connections() {
             std::unique_lock l{connections_mtp_};
-            while(connections_.size()) {
-                remove_conn_dont_send_message_unlocked(connections_.begin()->first);
+            while(connections_by_id_.size()) {
+                remove_conn_dont_send_message_unlocked(connections_by_id_.begin()->first);
             }
         }
 
@@ -342,17 +342,23 @@ namespace teal::net {
         bool remove_conn(std::uint64_t conn_id) {
             bool res{false};
             std::unique_lock csl{connections_mtp_};
-            auto it{connections_.find(conn_id)};
-            if(it != connections_.end()) {
+            auto it{connections_by_id_.find(conn_id)};
+            if(it != connections_by_id_.end()) {
                 std::shared_ptr<udp_connection> cnn{it->second};
-                connections_.erase(it);
+                std::string h{conn_addr_str(cnn->cli_addr())};
+                int p{conn_port(cnn->cli_addr())};
+                connections_by_host_[h].erase(p);
+                if(connections_by_host_[h].empty()) {
+                    connections_by_host_.erase(h);
+                }
+                connections_by_id_.erase(it);
                 csl.unlock();
                 {
                     std::shared_lock l{sock_fd_mtp_};
                     if(sock_fd_ >= 0) {
                         socklen_t socklen{
                             static_cast<socklen_t>(sock_type_ == address_family::inet6 ?
-                                sizeof(sockaddr_in6) : sizeof(sockaddr_in))
+                                                       sizeof(sockaddr_in6) : sizeof(sockaddr_in))
                         };
                         ::sendto(sock_fd_, "close", 5, MSG_DONTWAIT, cnn->addr_ptr(), socklen);
                     }
@@ -367,22 +373,22 @@ namespace teal::net {
 
         std::shared_ptr<udp_connection> connection_by_id(std::uint64_t conn_id) const {
             std::shared_lock l{connections_mtp_};
-            auto it{connections_.find(conn_id)};
-            return it != connections_.end() ? it->second : std::shared_ptr<udp_connection>{};
+            auto it{connections_by_id_.find(conn_id)};
+            return it != connections_by_id_.end() ? it->second : std::shared_ptr<udp_connection>{};
         }
 
         bool connection_exists(std::uint64_t conn_id) const {
             std::shared_lock l{connections_mtp_};
-            return connections_.find(conn_id) != connections_.end();
+            return connections_by_id_.find(conn_id) != connections_by_id_.end();
         }
 
     private:
         void recheck_conn_timeouts_and_clean(long double seconds) {
             std::unique_lock conn_lck{connections_mtp_};
-            if(connections_.size() < 1000) {
+            if(connections_by_id_.size() < 1000) {
                 return;
             }
-            std::map<std::uint64_t, std::shared_ptr<udp_connection>> connections_copy{connections_};
+            std::map<std::uint64_t, std::shared_ptr<udp_connection>> connections_copy{connections_by_id_};
             for(auto &&p: connections_copy) {
                 if(p.second->seconds_since_last_activity() > seconds) {
                     remove_conn(p.first);
@@ -392,9 +398,16 @@ namespace teal::net {
 
         bool remove_conn_dont_send_message_unlocked(std::uint64_t conn_id) {
             bool res{false};
-            auto it{connections_.find(conn_id)};
-            if(it != connections_.end()) {
-                connections_.erase(conn_id);
+            auto it{connections_by_id_.find(conn_id)};
+            if(it != connections_by_id_.end()) {
+                std::shared_ptr<udp_connection> cnn{it->second};
+                std::string h{conn_addr_str(cnn->cli_addr())};
+                int p{conn_port(cnn->cli_addr())};
+                connections_by_host_[h].erase(p);
+                if(connections_by_host_[h].empty()) {
+                    connections_by_host_.erase(h);
+                }
+                connections_by_id_.erase(it);
                 if(on_connection_closed_) {
                     on_connection_closed_(conn_id);
                 }
@@ -406,9 +419,16 @@ namespace teal::net {
         bool remove_conn_dont_send_message(std::uint64_t conn_id) {
             bool res{false};
             std::unique_lock csl{connections_mtp_};
-            auto it{connections_.find(conn_id)};
-            if(it != connections_.end()) {
-                connections_.erase(conn_id);
+            auto it{connections_by_id_.find(conn_id)};
+            if(it != connections_by_id_.end()) {
+                std::shared_ptr<udp_connection> cnn{it->second};
+                std::string h{conn_addr_str(cnn->cli_addr())};
+                int p{conn_port(cnn->cli_addr())};
+                connections_by_host_[h].erase(p);
+                if(connections_by_host_[h].empty()) {
+                    connections_by_host_.erase(h);
+                }
+                connections_by_id_.erase(it);
                 csl.unlock();
                 if(on_connection_closed_) {
                     on_connection_closed_(conn_id);
@@ -418,66 +438,91 @@ namespace teal::net {
             return res;
         }
 
-        void process_new_connection(sockaddr_any cliaddr) {
-            serializer ser{};
-            std::uint64_t conn_id{};
-            conn_id = conn_id_gen_();
+        bool remove_conn_dont_send_message(std::string const &h, int p) {
+            bool res{false};
+            std::unique_lock csl{connections_mtp_};
 
-            std::shared_ptr<udp_connection> conn{std::make_shared<udp_connection>(cliaddr, /*sock_type_, */conn_id)};
-            {
-                std::unique_lock l{connections_mtp_};
-                conn->update_last_activity_time();
-                connections_[conn_id] = conn;
+            std::shared_ptr<udp_connection> cnn{};
+
+            auto hit{connections_by_host_.find(h)};
+            if(hit != connections_by_host_.end()) {
+                auto pit{hit->second.find(p)};
+                if(pit != hit->second.end()) {
+                    cnn = pit->second;
+                    hit->second.erase(pit);
+                }
+                connections_by_host_.erase(hit);
             }
-            if(on_new_connection_) {
-                on_new_connection_(conn_id);
+            if(cnn) {
+                auto cnid{cnn->conn_id()};
+                auto it{connections_by_id_.find(cnid)};
+                if(it != connections_by_id_.end()) {
+                    std::shared_ptr<udp_connection> cnn{it->second};
+                    std::string h{conn_addr_str(cnn->cli_addr())};
+                    int p{conn_port(cnn->cli_addr())};
+                    connections_by_host_[h].erase(p);
+                    if(connections_by_host_[h].empty()) {
+                        connections_by_host_.erase(h);
+                    }
+                    connections_by_id_.erase(it);
+                    csl.unlock();
+                    if(on_connection_closed_) {
+                        on_connection_closed_(cnid);
+                    }
+                    res = true;
+                }
             }
-            ser << "ok" << bit_util::hnswap<std::uint64_t>{conn_id}.val;
-            socklen_t socklen{(socklen_t)(sock_type_ == address_family::inet6 ? sizeof(sockaddr_in6) : sizeof(sockaddr_in))};
-            std::shared_lock sl{sock_fd_mtp_};
-            if(sock_fd_ >= 0) {
-                if(::sendto(sock_fd_, ser.data_vec().data(), ser.data_vec().size(), 0, conn->addr_ptr(), socklen) == -1) {
-                    sl.unlock();
+            return res;
+        }
+
+        std::shared_ptr<udp_connection> process_new_connection(sockaddr_any cliaddr) {
+            std::string h{conn_addr_str(cliaddr)};
+            int p{conn_port(cliaddr)};
+            std::shared_ptr<udp_connection> conn{get_conn_by_host(h, p)};
+            if(!conn) {
+                std::uint64_t conn_id{};
+                conn_id = conn_id_gen_();
+                conn = std::make_shared<udp_connection>(cliaddr, conn_id);
+                {
                     std::unique_lock l{connections_mtp_};
-                    connections_.erase(conn_id);
+                    conn->update_last_activity_time();
+                    connections_by_id_[conn_id] = conn;
+                    connections_by_host_[h][p] = conn;
+                }
+                if(on_new_connection_) {
+                    on_new_connection_(conn_id);
                 }
             }
             if(stale_connections_removal_timeout_ > 0) {
                 enqueue_job([this]() { recheck_conn_timeouts_and_clean(stale_connections_removal_timeout_); });
             }
+            return conn;
         }
 
         void process_input(sockaddr_any cliaddr, std::shared_ptr<in_struct> in_buff) {
             std::size_t insize{in_buff->second};
-            if(insize == 3) {
-                if(std::string{in_buff->first.begin(), in_buff->first.begin() + 3} == "con") {
-                    process_new_connection(cliaddr);
-                }
-            } else if(insize == 13 && std::string{in_buff->first.begin(), in_buff->first.begin() + 5} == "close") {
-                std::uint64_t conn_id{};
-                std::memcpy(&conn_id, in_buff->first.data() + 5, 8);
-                remove_conn_dont_send_message(conn_id);
-            } else if(insize > 0 && on_data_from_client_ != nullptr) {
-                std::uint64_t conn_id{};
-                std::memcpy(&conn_id, in_buff->first.data(), 8);
-                std::shared_lock conn_lck{connections_mtp_};
-                auto conn_desc_it{connections_.find(conn_id)};
-                if(conn_desc_it != connections_.end()) {
-                    std::shared_ptr<udp_connection> conn_ptr{conn_desc_it->second};
-                    conn_lck.unlock();
-                    std::optional<bytevec> msg{conn_ptr->set_incoming_data(in_buff->first.data() + 8, insize - 8)};
-                    if(msg) {
-                        serial_reader const ser{msg->data(), msg->size()};
-                        serial_reader::const_iterator iter{ser.cbegin()};
-                        if(iter->as_unumber() == 0) {
-                            ++iter;
-                            on_data_from_client_(conn_id, iter->data(), iter->size());
-                        } else {
-                            ++iter;
-                            std::uint64_t ctr_start{iter->as_unumber()};
-                            ++iter;
-                            std::vector<std::uint8_t> d{conn_ptr->decrypt_data(iter->data(), iter->size(), ctr_start)};
-                            on_data_from_client_(conn_id, d.data(), d.size());
+            std::shared_ptr<udp_connection> conn_ptr{process_new_connection(cliaddr)};
+            if(conn_ptr) {
+                if(insize == 13 && std::string{in_buff->first.begin(), in_buff->first.begin() + 5} == "close") {
+                    if(conn_ptr) {
+                        remove_conn_dont_send_message(conn_ptr->conn_id());
+                    }
+                } else if(insize > 0 && on_data_from_client_ != nullptr) {
+                    if(conn_ptr) {
+                        std::optional<bytevec> msg{conn_ptr->set_incoming_data(in_buff->first.data() + 8, insize - 8)};
+                        if(msg) {
+                            serial_reader const ser{msg->data(), msg->size()};
+                            serial_reader::const_iterator iter{ser.cbegin()};
+                            if(iter->as_unumber() == 0) {
+                                ++iter;
+                                on_data_from_client_(conn_ptr->conn_id(), iter->data(), iter->size());
+                            } else {
+                                ++iter;
+                                std::uint64_t ctr_start{iter->as_unumber()};
+                                ++iter;
+                                std::vector<std::uint8_t> d{conn_ptr->decrypt_data(iter->data(), iter->size(), ctr_start)};
+                                on_data_from_client_(conn_ptr->conn_id(), d.data(), d.size());
+                            }
                         }
                     }
                 }
@@ -539,6 +584,14 @@ namespace teal::net {
 
             struct sockaddr const *addr_ptr() const {
                 return (struct sockaddr const *)&cli_addr_;
+            }
+
+            sockaddr_any const &cli_addr() const {
+                return cli_addr_;
+            }
+
+            sockaddr_any &cli_addr() {
+                return cli_addr_;
             }
 
             void set_ack() {
@@ -665,6 +718,14 @@ namespace teal::net {
         };
 
     private:
+        std::string conn_addr_str(sockaddr_any const &cliaddr) const {
+            return (sock_type_ == address_family::inet6) ? ntop(cliaddr.v6_.sin6_addr) : ntop(cliaddr.v4_.sin_addr);
+        }
+
+        int conn_port(sockaddr_any const &cliaddr) const {
+            return (sock_type_ == address_family::inet6) ? cliaddr.v6_.sin6_port : cliaddr.v4_.sin_port;
+        }
+
         command_queue *cq_{nullptr};
         std::function<void()> worker_entry_{
             [this]() {
@@ -682,7 +743,21 @@ namespace teal::net {
         sockaddr_any serv_addr_;
         atomic_sequence_generator<std::uint64_t> conn_id_gen_{1};
         mutable std::shared_mutex connections_mtp_{};
-        mutable std::map<std::uint64_t, std::shared_ptr<udp_connection>> connections_{};
+        mutable std::map<std::uint64_t, std::shared_ptr<udp_connection>> connections_by_id_{};
+        mutable std::map<std::string, std::map<int, std::shared_ptr<udp_connection>>> connections_by_host_{};
+        std::shared_ptr<udp_connection> get_conn_by_host(std::string const &h, int p) const {
+            std::shared_ptr<udp_connection> res{};
+            std::shared_lock l{connections_mtp_};
+            auto hit{connections_by_host_.find(h)};
+            if(hit != connections_by_host_.end()) {
+                auto pit{hit->second.find(p)};
+                if(pit != hit->second.end()) {
+                    res = pit->second;
+                }
+            }
+            return res;
+        }
+
         std::function<void(std::uint64_t)> on_new_connection_{nullptr};
         std::function<void(std::uint64_t, void const *, std::size_t)> on_data_from_client_{nullptr};
         std::function<void(std::uint64_t)> on_connection_closed_{nullptr};

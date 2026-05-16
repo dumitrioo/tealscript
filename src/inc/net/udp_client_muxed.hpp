@@ -65,6 +65,60 @@ namespace teal::net {
             on_data_arrived_ = fun;
         }
 
+        bool create(std::string const &addr, std::uint16_t port) {
+            bool result{false};
+            std::unique_lock l{sock_fd_mtp_};
+            if(sock_fd_ != -1) {
+                return true;
+            } else {
+                if(sock_type_ == address_family::inet4) {
+                    if((sock_fd_ = ::socket(AF_INET, SOCK_DGRAM, 0)) != -1) {
+                        in_addr dst_ip{teal::net::resolve(addr)};
+                        std::memset(&serv_addr_.v4_, 0, sizeof(serv_addr_.v4_));
+                        serv_addr_.v4_.sin_family = AF_INET;
+                        serv_addr_.v4_.sin_port = ::htons(port);
+                        serv_addr_.v4_.sin_addr.s_addr = dst_ip.s_addr;
+                    }
+                } else if(sock_type_ == address_family::inet6) {
+                    if((sock_fd_ = ::socket(AF_INET6, SOCK_DGRAM, 0)) != -1) {
+                        in6_addr dst_ip{teal::net::resolve6(addr)};
+                        std::memset(&serv_addr_.v6_, 0, sizeof(serv_addr_.v6_));
+                        serv_addr_.v6_.sin6_family = AF_INET6;
+                        serv_addr_.v6_.sin6_port = ::htons(port);
+                        serv_addr_.v6_.sin6_addr = dst_ip;
+                    }
+                }
+            }
+            if(sock_fd_ != -1) {
+                if(is_data_arrived_set()) {
+                    result = helpers::make_nonblocking(sock_fd_);
+                    if(!result) {
+                        ::close(sock_fd_);
+                        sock_fd_ = -1;
+                    }
+                } else {
+                    result = true;
+                }
+
+                if(result) {
+                    if(poller_.create() && poller_.add_event(sock_fd_, net::POLL_EVENT_IN)) {
+                        unterminate();
+                        if(is_data_arrived_set()) {
+                            worker_entry_procesing_ = true;
+                            cq_->enqueue(worker_entry_);
+                        }
+                        result = true;
+                    }
+                }
+            }
+            if(!result) {
+                sock_fd_ = -1;
+                sock_type_ = address_family::unspecified;
+                conn_id_ = 0;
+            }
+            return result;
+        }
+
         bool connect(std::string const &addr, std::uint16_t port) {
             bool result{false};
             std::unique_lock l{sock_fd_mtp_};
@@ -116,9 +170,11 @@ namespace teal::net {
                     std::array<std::uint8_t, NET_PACKET_PAYLOAD_SIZE_MAX + 256> buffer{};
                     ssize_t n = ::recvfrom(sock_fd_, buffer.data(), buffer.size(), 0, serv_addr(), &socklen);
                     helpers::set_rcv_timeout(sock_fd_, recv_timeout_);
-                    if(is_data_arrived_set() && !helpers::make_nonblocking(sock_fd_)) {
-                        ::close(sock_fd_);
-                        sock_fd_ = -1;
+                    if(is_data_arrived_set()) {
+                        if(!helpers::make_nonblocking(sock_fd_)) {
+                            ::close(sock_fd_);
+                            sock_fd_ = -1;
+                        }
                     }
                     if(sock_fd_ != -1 && n > 0) {
                         teal::serial_reader sr{buffer.data(), (std::size_t)n};
@@ -310,7 +366,7 @@ namespace teal::net {
         std::function<void()> worker_entry_{
             [this]() {
                 if(!termination() && !conn_broken_.load(std::memory_order_acquire)) {
-                    std::vector<net::poll_event> evs{poller_.wait(1, timespec_wrapper{5.0})};
+                    std::vector<net::poll_event> evs{poller_.wait(1, timespec_wrapper{0.1})};
                     if(!evs.empty()) {
                         if((evs[0].events & net::POLL_EVENT_IN) == net::POLL_EVENT_IN) {
                             std::shared_lock l{sock_fd_mtp_};

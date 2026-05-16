@@ -1429,7 +1429,6 @@ namespace teal {
                     throw std::runtime_error{"set single thread mode first"};
                 }
             }
-            // start_extcell_processing();
             exctx_.clear_all_jumps_request();
             for(auto &&w: worker_cells_) {
                 std::shared_ptr<worker_cell_instance> &curr_cell{w.second};
@@ -1607,8 +1606,6 @@ namespace teal {
             }
             unfail();
             unterminate();
-
-            // start_extcell_processing();
             for(int i{0}; i < thrd_cnt; ++i) {
                 threads_.emplace_back([this]() {
                     bool excepted{false};
@@ -2224,18 +2221,12 @@ namespace teal {
             if(extcell_processing_started() || !extcell_processing_needed()) {
                 return;
             }
-
-            if(!command_queue_started()) {
-                start_command_queue();
-            }
-
+            start_command_queue();
             std::unique_lock l{ext_cells_processor_mtp_};
-
             ext_cells_processor_enabled_ = false;
             while(ext_cells_processor_started_) {
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
             }
-
             ext_cells_processor_enabled_ = true;
             cq_->enqueue(ext_cells_processor_);
             ext_cells_processor_started_ = true;

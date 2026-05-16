@@ -383,7 +383,8 @@ namespace teal {
                 last_data_arrived_time_ = steady_time_sec();
                 notify_on_data_arrived(bv);
             });
-            if(!ucm_->connect(host, port)) {
+            last_data_arrived_time_ = steady_time_sec();
+            if(!ucm_->create(host, port)) {
                 ucm_->set_on_data_arrived(nullptr);
             }
         }
@@ -396,7 +397,7 @@ namespace teal {
 
         bool connected() const {
             std::shared_lock lck{ucm_mtp_};
-            return ucm_ && ucm_->connected();
+            return ucm_ && ucm_->connected() && seconds_with_no_data_arrivals() < 5;
         }
 
         int send(const void *data, size_t data_size) {
