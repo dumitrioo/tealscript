@@ -1138,7 +1138,7 @@ namespace teal {
                 return net_server_running();
             });
 
-            add_function("disable_values_network_exposing", TEALFUN(args) {
+            add_function("disable_external_values_server", TEALFUN(args) {
                 stop_net_server();
                 return !net_server_running();
             });
