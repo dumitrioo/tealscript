@@ -1,15 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////
 //                             ALU 74181 view (renderer)
 /////////////////////////////////////////////////////////////////////////////////
-setup_cell() {
-    if(!this.set_up) {
-        set_extern_update_seconds(0.1);
-        this.set_up = true;
-    }
-    return 0;
-}
-setup_cell setup();
-
 extern 'tealscript://localhost:43987/s0' s0;
 extern 'tealscript://localhost:43987/s1' s1;
 extern 'tealscript://localhost:43987/s2' s2;
