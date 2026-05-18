@@ -1463,9 +1463,6 @@ namespace teal {
                     if(r.is_undefined_ref()) {
                         throw runtime_error{this_->line_, this_->col_, "division by undefined value"};
                     } else {
-                        // if(l.is_undefined_ref()) {
-                        //     l.become_same_type_as(r);
-                        // } else {
                         bool excepted{false};
                         runtime_error er{{}, {}, {}};
                         try {
@@ -1928,11 +1925,6 @@ namespace teal {
                 },
                 /* OR */
                 [](binop_expression *this_, execution_context *ctx, eval_caller_type, valbox *) -> valbox {
-                    // bool old{ctx->set_create_if_not_exists(false)};
-                    // shut_on_destroy sod{[&]() { ctx->set_create_if_not_exists(old); }};
-                    // bool l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref().cast_to_bool()};
-                    // if(l) { return true; }
-                    // return this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref().cast_to_bool();
                     bool old{ctx->set_create_if_not_exists(false)};
                     shut_on_destroy sod{[&]() { ctx->set_create_if_not_exists(old); }};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
@@ -1952,7 +1944,6 @@ namespace teal {
                     } else {
                         if(l.cast_to_bool()) { return true; }
                     }
-
                     {
                         valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                         str_map_t<std::function<valbox(valbox &)>> const *unops{nullptr};
@@ -2011,11 +2002,6 @@ namespace teal {
                 },
                 /* AND */
                 [](binop_expression *this_, execution_context *ctx, eval_caller_type, valbox *) -> valbox {
-                    // bool old{ctx->set_create_if_not_exists(false)};
-                    // shut_on_destroy sod{[&]() { ctx->set_create_if_not_exists(old); }};
-                    // bool l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref().cast_to_bool()};
-                    // if(!l) { return false; }
-                    // return this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref().cast_to_bool();
                     bool old{ctx->set_create_if_not_exists(false)};
                     shut_on_destroy sod{[&]() { ctx->set_create_if_not_exists(old); }};
                     valbox l{this_->lval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
@@ -2032,7 +2018,6 @@ namespace teal {
                         }
                     }
                     if(!l.cast_to_bool()) { return false; }
-
                     {
                         valbox r{this_->rval_->eval(ctx, eval_caller_type::no_matter, nullptr).deref()};
                         str_map_t<std::function<valbox(valbox &)>> const *unops{nullptr};
@@ -2184,26 +2169,32 @@ namespace teal {
                                     }
                                 }
                             } else if(l.is_undefined_ref()) {
-                                if(!ctx->create_if_not_exists()) {
-                                    throw runtime_error{this_->line(), this_->col(), "wrong left operand for \"dot\" operation"};
-                                }
                                 if(!this_->rval_->is_symbolic()) {
-                                    throw runtime_error{this_->line(), this_->col(), "wrong right operand for \"dot\" operation"};
+                                    throw runtime_error{this_->line(), this_->col(), "wrong expression from right of \".\" operator"};
                                 }
-                                l.become_object();
-                                res = l[this_->rval_->symbol()];
-                                res.set_pointed(l);
-                                this_->sym_ = this_->rval_->symbol();
+                                if(ctx->create_if_not_exists()) {
+                                    l.become_object();
+                                    res = l[this_->rval_->symbol()];
+                                    res.set_pointed(l);
+                                    this_->sym_ = this_->rval_->symbol();
+                                }
                             } else if(l.is_object_ref()) {
                                 if(!this_->rval_->is_symbolic()) {
-                                    throw runtime_error{this_->line(), this_->col(), "wrong right operand for \"dot\" operation"};
+                                    throw runtime_error{this_->line(), this_->col(), "wrong expression from right of \".\" operator"};
                                 }
-                                if(!ctx->create_if_not_exists() && l.as_object().end() == l.as_object().find(this_->rval_->symbol())) {
-                                    throw runtime_error{this_->line(), this_->col(), "field not found"};
+                                if(ctx->create_if_not_exists()) {
+                                    res = l[this_->rval_->symbol()];
+                                    res.set_pointed(l);
+                                    this_->sym_ = this_->rval_->symbol();
+                                } else {
+                                    valbox::object_t &o{l.as_object()};
+                                    auto it{o.find(this_->rval_->symbol())};
+                                    if(it != o.end()) {
+                                        res = it->second;
+                                        res.set_pointed(l);
+                                        this_->sym_ = this_->rval_->symbol();
+                                    }
                                 }
-                                res = l[this_->rval_->symbol()];
-                                res.set_pointed(l);
-                                this_->sym_ = this_->rval_->symbol();
                             } else {
                                 throw runtime_error{this_->line(), this_->col(), "wrong operand"};
                             }

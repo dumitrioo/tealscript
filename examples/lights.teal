@@ -1,0 +1,75 @@
+ray_window_lights() {
+    if(!this.win_created) {
+        ray_init_window(800, 600, "Tap Lights");
+        ray_set_target_fps(30);
+        ray_begin_drawing();
+        ray_clear_background(Color(0, 0, 0, 255));
+        this.win_created = true;
+        this.tid = thread_id();
+    }
+    if(this.tid == thread_id()) {
+        if(ray_window_should_close()) {
+            ray_end_drawing();
+            ray_close_window();
+            exit(0);
+        } else {
+            if(ray_get_key_pressed() == 300) ray_toggle_full_screen();
+            ray_end_drawing();
+            ray_begin_drawing();
+        }
+    }
+    return this.tid;
+}
+ray_window_lights t();
+
+touch_sensor(tid) {
+    if(tid == thread_id() && ray_is_mouse_button_down(0)) {
+        mx = (f64)ray_get_mouse_x() / ray_get_screen_width();
+        my = (f64)ray_get_mouse_y() / ray_get_screen_height();
+        ret = object();
+        ret.t = steady_clock();
+        ret.x = mx;
+        ret.y = my;
+        return ret;
+    }
+}
+touch_sensor sn(t);
+
+function between(x, y , z) return x >= y && x <= z;
+
+pcll(tid, y,x, sn) {
+    pressed = false;
+    xv = x * 0.1;
+    yv = y * 0.1;
+    if(this.t == undefined) {
+        this.t = steady_clock() - 2.0;
+        this.x = 0;
+        this.y = 0;
+    }
+    if(sn.is_object() && sn.t > this.t) {
+        this.x = sn.x;
+        this.y = sn.y;
+        this.tt = sn.t + 1.0 * sqrt((xv - sn.x) * (xv - sn.x) + (yv - sn.y) * (yv - sn.y));
+        this.t = sn.t;
+    }
+    if(tid == thread_id()) {
+        xc = x * 0.1 * ray_get_screen_width() + 0.05 * ray_get_screen_width();
+        yc = y * 0.1 * ray_get_screen_height() + 0.05 * ray_get_screen_height();
+        if(steady_clock().between(this.tt, this.tt + .1)) {
+            ray_draw_circle(xc, yc, 5, Color(255, 255, 255, 255));
+        } else {
+            ray_draw_circle(xc, yc, 5, Color(0, 0, 0, 80));
+        }
+    }
+}
+
+pcll c00(t, 0, 0, sn); pcll c01(t, 0, 1, sn); pcll c02(t, 0, 2, sn); pcll c03(t, 0, 3, sn); pcll c04(t, 0, 4, sn); pcll c05(t, 0, 5, sn); pcll c06(t, 0, 6, sn); pcll c07(t, 0, 7, sn); pcll c08(t, 0, 8, sn); pcll c09(t, 0, 9, sn);
+pcll c10(t, 1, 0, sn); pcll c11(t, 1, 1, sn); pcll c12(t, 1, 2, sn); pcll c13(t, 1, 3, sn); pcll c14(t, 1, 4, sn); pcll c15(t, 1, 5, sn); pcll c16(t, 1, 6, sn); pcll c17(t, 1, 7, sn); pcll c18(t, 1, 8, sn); pcll c19(t, 1, 9, sn);
+pcll c20(t, 2, 0, sn); pcll c21(t, 2, 1, sn); pcll c22(t, 2, 2, sn); pcll c23(t, 2, 3, sn); pcll c24(t, 2, 4, sn); pcll c25(t, 2, 5, sn); pcll c26(t, 2, 6, sn); pcll c27(t, 2, 7, sn); pcll c28(t, 2, 8, sn); pcll c29(t, 2, 9, sn);
+pcll c30(t, 3, 0, sn); pcll c31(t, 3, 1, sn); pcll c32(t, 3, 2, sn); pcll c33(t, 3, 3, sn); pcll c34(t, 3, 4, sn); pcll c35(t, 3, 5, sn); pcll c36(t, 3, 6, sn); pcll c37(t, 3, 7, sn); pcll c38(t, 3, 8, sn); pcll c39(t, 3, 9, sn);
+pcll c40(t, 4, 0, sn); pcll c41(t, 4, 1, sn); pcll c42(t, 4, 2, sn); pcll c43(t, 4, 3, sn); pcll c44(t, 4, 4, sn); pcll c45(t, 4, 5, sn); pcll c46(t, 4, 6, sn); pcll c47(t, 4, 7, sn); pcll c48(t, 4, 8, sn); pcll c49(t, 4, 9, sn);
+pcll c50(t, 5, 0, sn); pcll c51(t, 5, 1, sn); pcll c52(t, 5, 2, sn); pcll c53(t, 5, 3, sn); pcll c54(t, 5, 4, sn); pcll c55(t, 5, 5, sn); pcll c56(t, 5, 6, sn); pcll c57(t, 5, 7, sn); pcll c58(t, 5, 8, sn); pcll c59(t, 5, 9, sn);
+pcll c60(t, 6, 0, sn); pcll c61(t, 6, 1, sn); pcll c62(t, 6, 2, sn); pcll c63(t, 6, 3, sn); pcll c64(t, 6, 4, sn); pcll c65(t, 6, 5, sn); pcll c66(t, 6, 6, sn); pcll c67(t, 6, 7, sn); pcll c68(t, 6, 8, sn); pcll c69(t, 6, 9, sn);
+pcll c70(t, 7, 0, sn); pcll c71(t, 7, 1, sn); pcll c72(t, 7, 2, sn); pcll c73(t, 7, 3, sn); pcll c74(t, 7, 4, sn); pcll c75(t, 7, 5, sn); pcll c76(t, 7, 6, sn); pcll c77(t, 7, 7, sn); pcll c78(t, 7, 8, sn); pcll c79(t, 7, 9, sn);
+pcll c80(t, 8, 0, sn); pcll c81(t, 8, 1, sn); pcll c82(t, 8, 2, sn); pcll c83(t, 8, 3, sn); pcll c84(t, 8, 4, sn); pcll c85(t, 8, 5, sn); pcll c86(t, 8, 6, sn); pcll c87(t, 8, 7, sn); pcll c88(t, 8, 8, sn); pcll c89(t, 8, 9, sn);
+pcll c90(t, 9, 0, sn); pcll c91(t, 9, 1, sn); pcll c92(t, 9, 2, sn); pcll c93(t, 9, 3, sn); pcll c94(t, 9, 4, sn); pcll c95(t, 9, 5, sn); pcll c96(t, 9, 6, sn); pcll c97(t, 9, 7, sn); pcll c98(t, 9, 8, sn); pcll c99(t, 9, 9, sn);

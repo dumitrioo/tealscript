@@ -125,6 +125,7 @@ DISTFILES += \
     ../external_server.teal \
     ../external_value.teal \
     ../kalman_1D_example.teal \
+    ../lights.teal \
     ../one_second_limit.teal \
     ../perf_limit.teal \
     ../pid_regulator.teal \

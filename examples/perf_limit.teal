@@ -1,8 +1,8 @@
 performance_limiter() {
     if(this.initialized == undefined) {
         this.initialized = true;
-        set_cycle_sleep_seconds(0.005);
-        set_inactive_sleep_seconds(0.01);
+        set_cycle_sleep_seconds(0.0001);
+        set_inactive_sleep_seconds(0.001);
     }
 }
 

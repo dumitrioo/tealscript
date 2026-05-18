@@ -1025,17 +1025,17 @@ namespace teal {
                     become_object();
                 }
                 if(is_object_ref()) {
-                    return as_object()[indx.as_string()];
+                    return as_object()[indr.as_string()];
                 }
             } else if(t_of_indx == type::WSTRING) {
                 if(t == type::UNDEFINED) {
                     become_object();
                 }
                 if(t == type::OBJECT) {
-                    return as_object()[teal::str_util::to_utf8(indx.as_wstring())];
+                    return as_object()[teal::str_util::to_utf8(indr.as_wstring())];
                 }
             } else if(is_numeric_type(t_of_indx)) {
-                std::uint64_t i{indx.cast_to_u64()};
+                std::uint64_t i{indr.cast_to_u64()};
                 if(t == type::OBJECT) {
                     object_t &o{as_object()};
                     if(o.size() > i) {
