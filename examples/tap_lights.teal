@@ -1,12 +1,8 @@
 ray_window_lights() {
     if(!this.win_created) {
-        w = ray_get_monitor_physical_width(ray_get_current_monitor()) * 0.8;
-        if(!w) {
-            w = 1024;
-        }
+        w = 1024;
         h = w / 1.6;
         ray_init_window(w, h, "Tap Lights");
-        ray_maximize_window();
         ray_set_target_fps(30);
         ray_begin_drawing();
         ray_clear_background(Color(0, 0, 0, 255));
